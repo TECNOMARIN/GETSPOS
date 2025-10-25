@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GETS POS - Sistema de Inventario</title>
+    <title>Gestor de Inventario (GETS-POS)</title>
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carga de Font Awesome (para iconos) -->
@@ -126,6 +126,82 @@
           -moz-appearance: textfield; /* Firefox */
         }
 
+        /* --- Estilos para Sidebar colapsable --- */
+        
+        /* Estado Colapsado */
+        #sidebar.collapsed {
+            width: 5rem; /* w-20 */
+        }
+        
+        #sidebar.collapsed .sidebar-text,
+        #sidebar.collapsed #app-role {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        #sidebar.collapsed #sidebar-logo {
+            width: 2.5rem; /* w-10 */
+            margin-bottom: 0;
+        }
+        
+        #sidebar.collapsed .nav-button,
+        #sidebar.collapsed #settings-menu-toggle {
+            justify-content: center;
+        }
+        
+        #sidebar.collapsed .nav-button .w-6,
+        #sidebar.collapsed #settings-menu-toggle .w-6 {
+            margin-right: 0;
+        }
+
+        #sidebar.collapsed #logout-button .sidebar-text {
+             display: none;
+        }
+        
+        #sidebar.collapsed #logout-button .fa-sign-out-alt {
+            margin-right: 0;
+        }
+
+        #main-content.sidebar-collapsed {
+            margin-left: 0.5rem; /* ml-2 (Cambiado de 5rem a 0.5rem) */
+        }
+        
+        /* FIX: Eliminada la regla que movía el botón y hacía que tapara el logo */
+        /* #sidebar-toggle.sidebar-collapsed { ... } */
+        
+        #sidebar-toggle.sidebar-collapsed i {
+            transform: rotate(180deg);
+        }
+
+        /* Clases de utilidad para transiciones */
+        .transition-all-300 {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 300ms;
+        }
+
+        /* --- Estilos para Submenú de Configuración --- */
+        .submenu {
+            background-color: rgba(0,0,0,0.1); /* Fondo ligeramente más oscuro */
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            max-height: 0;
+            opacity: 0;
+        }
+        .submenu.open {
+            max-height: 200px; /* Altura suficiente para los items */
+            opacity: 1;
+        }
+        #settings-chevron.open {
+            transform: rotate(180deg);
+        }
+        #sidebar.collapsed .submenu {
+            /* Ocultar forzadamente el submenú cuando la barra está colapsada */
+            display: none !important; 
+        }
+
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-dark-bg dark:text-dark-text font-sans">
@@ -171,62 +247,89 @@
     <!-- 2. Contenedor Principal de la Aplicación (Oculto por defecto) -->
     <div id="app-container" class="hidden h-screen flex">
         
+        <!-- Botón para Ocultar/Mostrar Sidebar -->
+        <button id="sidebar-toggle" class="fixed z-20 top-5 text-white transition-all-300 bg-indigo-600 hover:bg-indigo-500 rounded-full w-8 h-8 flex items-center justify-center" title="Ocultar menú" style="left: 1rem;"> <!-- Movido a la izquierda y resaltado -->
+            <i class="fas fa-chevron-left transition-transform duration-300"></i>
+        </button>
+
         <!-- Panel Lateral (Sidebar) -->
-        <nav id="sidebar" class="w-64 bg-indigo-900 text-white flex flex-col shadow-lg">
+        <nav id="sidebar" class="w-72 bg-indigo-900 text-white flex flex-col shadow-2xl transition-all-300"> <!-- Ancho w-72 y shadow-2xl -->
             <!-- Logo -->
-            <div class="py-6 px-4 text-center">
-                <img src="https://appgets.solutions/img/logoempresa.png" alt="Logo GETS" class="w-36 mx-auto mb-2">
-                <span class="text-2xl font-bold text-white tracking-wider">POS</span>
+            <div class="py-6 px-4 text-center relative">
+                <img src="https://appgets.solutions/img/logoempresa.png" alt="Logo GETS" class="w-36 mx-auto mb-2 transition-all-300" id="sidebar-logo">
+                <span class="text-2xl font-bold text-white tracking-wider sidebar-text transition-all-300">POS</span>
             </div>
             
             <!-- Menú de Navegación -->
-            <ul class="flex-1 px-4 py-2 space-y-2">
+            <ul class="flex-1 px-4 py-2 space-y-2 overflow-hidden">
                 <!-- Dashboard (Admin) -->
                 <li class="admin-only">
                     <button data-view="dashboard" class="nav-button w-full text-left flex items-center px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors">
-                        <i class="fas fa-chart-pie w-6 text-center text-lg mr-3"></i>
-                        <span class="font-medium">Dashboard</span>
+                        <i class="fas fa-chart-pie w-6 text-center text-lg mr-3 transition-all-300"></i>
+                        <span class="font-medium sidebar-text transition-all-300">Dashboard</span>
                     </button>
                 </li>
                 <!-- Inventario (Admin) -->
                 <li class="admin-only">
                     <button data-view="inventory" class="nav-button w-full text-left flex items-center px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors">
-                        <i class="fas fa-boxes w-6 text-center text-lg mr-3"></i>
-                        <span class="font-medium">Inventario</span>
+                        <i class="fas fa-boxes w-6 text-center text-lg mr-3 transition-all-300"></i>
+                        <span class="font-medium sidebar-text transition-all-300">Inventario</span>
                     </button>
                 </li>
                 <!-- Compras (Admin) -->
                 <li class="admin-only">
                     <button data-view="purchases" class="nav-button w-full text-left flex items-center px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors">
-                        <i class="fas fa-truck-loading w-6 text-center text-lg mr-3"></i>
-                        <span class="font-medium">Compras</span>
+                        <i class="fas fa-truck-loading w-6 text-center text-lg mr-3 transition-all-300"></i>
+                        <span class="font-medium sidebar-text transition-all-300">Compras</span>
                     </button>
                 </li>
                 <!-- Ventas (Todos) -->
                 <li>
                     <button data-view="sales" class="nav-button w-full text-left flex items-center px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors">
-                        <i class="fas fa-cash-register w-6 text-center text-lg mr-3"></i>
-                        <span class="font-medium">Ventas</span>
+                        <i class="fas fa-cash-register w-6 text-center text-lg mr-3 transition-all-300"></i>
+                        <span class="font-medium sidebar-text transition-all-300">Ventas</span>
                     </button>
+                </li>
+                <!-- Configuración (Admin) con Submenú -->
+                <li class="admin-only">
+                    <button id="settings-menu-toggle" class="nav-button w-full text-left flex items-center justify-between px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors">
+                        <div class="flex items-center">
+                            <i class="fas fa-cog w-6 text-center text-lg mr-3 transition-all-300"></i>
+                            <span class="font-medium sidebar-text transition-all-300">Configuración</span>
+                        </div>
+                        <i id="settings-chevron" class="fas fa-chevron-down w-4 text-center text-xs sidebar-text transition-transform duration-300"></i>
+                    </button>
+                    <ul id="settings-submenu" class="submenu pl-8 py-1 space-y-1">
+                        <li>
+                            <button data-view="settings-users" class="nav-submenu-button w-full text-left flex items-center px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors sidebar-text">
+                                Usuarios
+                            </button>
+                        </li>
+                        <li>
+                            <button data-view="settings-warehouses" class="nav-submenu-button w-full text-left flex items-center px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors sidebar-text">
+                                Bodegas
+                            </button>
+                        </li>
+                    </ul>
                 </li>
             </ul>
             
             <!-- Info de Usuario y Salir -->
-            <div class="p-4 border-t border-indigo-700">
+            <div class="p-4 border-t border-indigo-700 overflow-hidden">
                 <div class="text-center mb-3">
-                    <span id="app-user" class="block font-semibold text-lg capitalize"></span>
-                    <span id="app-role" class="block text-sm text-indigo-300 capitalize"></span>
+                    <span id="app-user" class="block font-semibold text-lg capitalize sidebar-text transition-all-300"></span>
+                    <span id="app-role" class="block text-sm text-indigo-300 capitalize sidebar-text transition-all-300"></span>
                 </div>
                 <button id="logout-button" class="w-full flex items-center justify-center py-2 px-4 rounded-lg bg-red-600 hover:bg-red-700 transition-colors">
-                    <i class="fas fa-sign-out-alt mr-2"></i>
-                    <span>Cambiar Usuario</span>
+                    <i class="fas fa-sign-out-alt mr-2 transition-all-300"></i>
+                    <span class="sidebar-text transition-all-300">Salir</span> <!-- Texto cambiado a Salir -->
                 </button>
             </div>
         </nav>
 
         <!-- Área de Contenido Principal -->
-        <main class="flex-1 flex flex-col h-screen">
-            <div class="flex-1 p-6 lg:p-8 overflow-y-auto">
+        <main id="main-content" class="flex-1 flex flex-col h-screen transition-all-300 ml-2"> <!-- Margen ml-2 -->
+            <div class="flex-1 p-2 lg:p-4 overflow-y-auto"> <!-- Padding p-2 lg:p-4 -->
 
                 <!-- 
                   VISTAS DE CONTENIDO (se muestra una a la vez)
@@ -426,6 +529,26 @@
                             </table>
                             <p id="sales-loading" class="text-center text-gray-500 py-4">Cargando historial de ventas...</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Vista: Configuración - Usuarios (Admin) -->
+                <div id="view-settings-users" class="app-view hidden">
+                    <h1 class="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Gestión de Usuarios</h1>
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-100">Lista de Usuarios</h2>
+                        <!-- TODO: User management UI -->
+                        <p class="dark:text-gray-300">Aquí se podrán crear, editar y asignar bodegas a los usuarios.</p>
+                    </div>
+                </div>
+
+                <!-- Vista: Configuración - Bodegas (Admin) -->
+                <div id="view-settings-warehouses" class="app-view hidden">
+                    <h1 class="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Gestión de Bodegas</h1>
+                    <div class="bg-white dark:bg-dark-card p-6 rounded-lg shadow-lg">
+                        <h2 class="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-100">Lista de Bodegas</h2>
+                        <!-- TODO: Warehouse CRUD UI -->
+                        <p class="dark:text-gray-300">Aquí se podrán crear, editar y eliminar las bodegas.</p>
                     </div>
                 </div>
 
@@ -1061,7 +1184,9 @@
                 appId: "TU_APP_ID"
             };
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Corregir el appId si contiene '/'
+        const rawAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const appId = rawAppId.replace(/\//g, '_'); // Reemplaza '/' por '_'
         
         // --- Importaciones de Firebase ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -1123,12 +1248,12 @@
             maximumFractionDigits: 0,
         });
 
-        // --- Lógica de Autenticación y Roles ---
+        // --- Lógica de Autenticación y Roles (ACTUALIZADA) ---
         const allowedUsers = {
-            "helio": { password: "gets1234", role: "administrador" },
-            "cristian": { password: "gets1234", role: "administrador" },
-            "mario": { password: "gets1234", role: "administrador" },
-            "ventas": { password: "gets1234", role: "vendedor" }
+            "helio": { password: "gets1234", role: "administrador", warehouses: "all" }, // 'all' significa todas las bodegas
+            "cristian": { password: "gets1234", role: "administrador", warehouses: "all" },
+            "mario": { password: "gets1234", role: "administrador", warehouses: "all" },
+            "ventas": { password: "gets1234", role: "vendedor", warehouses: ["ID_BODEGA_PRINCIPAL_AQUI"] } // Asignado solo a una bodega
         };
 
         // --- Referencias a Elementos del DOM ---
@@ -1199,6 +1324,12 @@
             
             // Confirmación General
             confirmModal, confirmModalText, confirmModalConfirm, confirmModalCancel,
+            
+            // Toggle Sidebar
+            sidebarToggle, mainContent,
+            
+            // Menú Configuración
+            settingsMenuToggle, settingsSubmenu, settingsChevron,
             
             // Modo Oscuro
             darkModeToggle, darkModeIcon;
@@ -1355,7 +1486,7 @@
             purchaseSupplierName = document.getElementById("purchase-supplier-name");
             purchaseSupplierId = document.getElementById("purchase-supplier-id");
             purchaseWarehouseTarget = document.getElementById("purchase-warehouse-target");
-            purchaseSearchInput = document.getElementById("purchase-search-product"); // CORREGIDO: Declaración duplicada eliminada
+            purchaseSearchInput = document.getElementById("purchase-search-product");
             purchaseSearchResults = document.getElementById("purchase-search-results");
             purchaseCartBody = document.getElementById("purchase-cart-body");
             purchaseTotal = document.getElementById("purchase-total");
@@ -1387,6 +1518,15 @@
             confirmModalConfirm = document.getElementById("confirm-modal-confirm");
             confirmModalCancel = document.getElementById("confirm-modal-cancel");
             
+            // Toggle Sidebar
+            sidebarToggle = document.getElementById("sidebar-toggle");
+            mainContent = document.getElementById("main-content");
+
+            // Menú Configuración
+            settingsMenuToggle = document.getElementById("settings-menu-toggle");
+            settingsSubmenu = document.getElementById("settings-submenu");
+            settingsChevron = document.getElementById("settings-chevron");
+
             // Modo Oscuro
             darkModeToggle = document.getElementById("dark-mode-toggle");
             darkModeIcon = document.getElementById("dark-mode-icon");
@@ -1401,10 +1541,15 @@
             if (logoutButton) logoutButton.addEventListener("click", handleLogout);
             
             if (sidebar) sidebar.addEventListener("click", (e) => {
-                const button = e.target.closest(".nav-button");
-                if (button) {
-                    showView(button.dataset.view);
+                // Actualizado para incluir botones de submenú
+                const button = e.target.closest(".nav-button, .nav-submenu-button");
+                
+                // No hacer nada si se hace clic en el toggle principal de Configuración
+                if (!button || button.id === 'settings-menu-toggle') {
+                    return;
                 }
+                
+                showView(button.dataset.view);
             });
             
             // Listeners de Modales
@@ -1453,6 +1598,12 @@
             // Botones de Venta/Compra
             if (openSaleModalBtn) openSaleModalBtn.addEventListener("click", () => openSaleModal());
             if (openPurchaseModalBtn) openPurchaseModalBtn.addEventListener("click", () => openPurchaseModal());
+
+            // Toggle Sidebar
+            if (sidebarToggle) sidebarToggle.addEventListener("click", toggleSidebar);
+
+            // Toggle Menú Configuración
+            if (settingsMenuToggle) settingsMenuToggle.addEventListener("click", toggleSettingsMenu);
         }
 
         /**
@@ -1486,8 +1637,10 @@
 
             } catch (error) {
                 console.error("Error conectando a Firebase:", error);
-                loginError.innerText = "Error crítico al conectar con la base de datos.";
-                loginError.classList.remove("hidden");
+                if (loginError) { // Comprobar que loginError no sea null
+                    loginError.innerText = "Error crítico al conectar con la base de datos.";
+                    loginError.classList.remove("hidden");
+                }
             }
         }
         
@@ -1508,6 +1661,8 @@
                 
                 loginScreen.classList.add("hidden");
                 appContainer.classList.add("flex"); // Cambiado de 'remove("hidden")' a 'add("flex")'
+                appContainer.classList.remove("hidden"); // Asegurarse de que se muestre
+                
                 loginError.classList.add("hidden");
                 loginForm.reset();
                 
@@ -1562,6 +1717,10 @@
             warehousesUnsubscribe = null;
             transfersUnsubscribe = null;
             purchasesUnsubscribe = null;
+
+            // Asegurarse de que el submenú de config esté cerrado
+            if (settingsSubmenu) settingsSubmenu.classList.remove('open');
+            if (settingsChevron) settingsChevron.classList.remove('open');
         }
 
         /**
@@ -1593,8 +1752,9 @@
             });
             
             // Quitar clase activa de todos los botones
-            document.querySelectorAll('.nav-button').forEach(button => {
-                button.classList.remove('bg-indigo-700');
+            document.querySelectorAll('.nav-button, .nav-submenu-button').forEach(button => {
+                button.classList.remove('bg-indigo-700'); // Color de fondo principal
+                button.classList.remove('bg-indigo-600'); // Color de submenú activo
             });
 
             // Mostrar la vista seleccionada
@@ -1604,9 +1764,61 @@
             }
             
             // Añadir clase activa al botón seleccionado
-            const buttonToActivate = document.querySelector(`.nav-button[data-view="${viewId}"]`);
+            const buttonToActivate = document.querySelector(`.nav-button[data-view="${viewId}"], .nav-submenu-button[data-view="${viewId}"]`);
             if (buttonToActivate) {
-                buttonToActivate.classList.add('bg-indigo-700');
+                
+                // Si es un botón de submenú, asegurarse de que el submenú esté abierto
+                const parentSubmenu = buttonToActivate.closest('.submenu');
+                if (parentSubmenu) {
+                     // Es un sub-botón
+                    buttonToActivate.classList.add('bg-indigo-600'); // Color activo para submenú
+                    if (!parentSubmenu.classList.contains('open')) {
+                        parentSubmenu.classList.add('open');
+                        document.getElementById('settings-chevron')?.classList.add('open');
+                    }
+                    // Activar también el botón padre
+                    document.getElementById('settings-menu-toggle')?.classList.add('bg-indigo-700');
+                } else {
+                    // Es un botón principal
+                    buttonToActivate.classList.add('bg-indigo-700'); // Color activo principal
+                    // Si no es el de config, cerrar el submenú de config
+                    if (buttonToActivate.id !== 'settings-menu-toggle') {
+                        document.getElementById('settings-submenu')?.classList.remove('open');
+                        document.getElementById('settings-chevron')?.classList.remove('open');
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Muestra/Oculta la barra lateral
+         */
+        function toggleSidebar() {
+            if (!sidebar || !mainContent || !sidebarToggle) return;
+            
+            sidebar.classList.toggle("collapsed");
+            mainContent.classList.toggle("sidebar-collapsed");
+            sidebarToggle.classList.toggle("sidebar-collapsed");
+
+            // AJUSTE: El botón ya no se mueve con JS, solo se rota con CSS.
+            // La lógica de 'style.left' se ha eliminado.
+        }
+
+        /**
+         * Muestra/Oculta el submenú de configuración
+         */
+        function toggleSettingsMenu() {
+            if (!settingsSubmenu || !settingsChevron) return;
+            settingsSubmenu.classList.toggle('open');
+            settingsChevron.classList.toggle('open');
+            
+            // Quitar el 'activo' del botón principal si se está cerrando
+            // y no hay una vista de submenú activa
+            const activeSubView = document.querySelector('.nav-submenu-button.bg-indigo-600');
+            if (!settingsSubmenu.classList.contains('open') && !activeSubView) {
+                settingsMenuToggle.classList.remove('bg-indigo-700');
+            } else if (settingsSubmenu.classList.contains('open')) {
+                 settingsMenuToggle.classList.add('bg-indigo-700');
             }
         }
 
@@ -1729,22 +1941,24 @@
         function loadInventory() {
             if (!inventoryCollectionPath) return;
 
-            const q = query(collection(db, inventoryCollectionPath)); // CORRECCIÓN: 'q' no estaba definida
+            const q = query(collection(db, inventoryCollectionPath));
 
             if (inventoryLoadingRow) inventoryLoadingRow.classList.remove('hidden');
 
             inventoryUnsubscribe = onSnapshot(q, (snapshot) => {
                 if (inventoryLoadingRow) inventoryLoadingRow.classList.add('hidden');
-                inventoryList.innerHTML = ''; // Limpiar la lista actual
+                if (inventoryList) inventoryList.innerHTML = ''; // Limpiar la lista actual
                 fullInventoryList = []; // Limpiar caché local
 
                 if (snapshot.empty && warehouseList.length > 0) {
                     // Solo sembrar productos si ya hay bodegas cargadas
                     console.log("Inventario vacío, añadiendo productos de prueba...");
                     seedProducts(); 
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td colspan="6" class="text-center text-gray-500 py-4">Añadiendo productos de prueba...</td>`;
-                    inventoryList.appendChild(row);
+                    if (inventoryList) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="6" class="text-center text-gray-500 py-4">Añadiendo productos de prueba...</td>`;
+                        inventoryList.appendChild(row);
+                    }
                     return;
                 }
 
@@ -1777,8 +1991,10 @@
             inventoryList.innerHTML = ''; // Limpiar
             
             if (products.length === 0) {
-                 if (inventoryLoadingRow) inventoryLoadingRow.classList.remove('hidden');
-                 inventoryLoadingRow.querySelector('td').innerText = "No hay productos en el inventario.";
+                 if (inventoryLoadingRow) {
+                     inventoryLoadingRow.classList.remove('hidden');
+                     inventoryLoadingRow.querySelector('td').innerText = "No hay productos en el inventario.";
+                 }
                  return;
             } else {
                  if (inventoryLoadingRow) inventoryLoadingRow.classList.add('hidden');
@@ -1896,6 +2112,7 @@
          * Filtra la tabla de inventario principal según el texto de búsqueda
          */
         function filterInventoryTable() {
+            if (!productSearchInput) return;
             const filter = productSearchInput.value.toLowerCase();
             const filteredProducts = fullInventoryList.filter(item => 
                 item.name.toLowerCase().includes(filter)
@@ -1956,7 +2173,7 @@
             editProductPrice.value = item.price;
             
             openModal(editModal);
-            editProductName.focus();
+            if (editProductName) editProductName.focus();
         }
 
         /**
@@ -1999,7 +2216,7 @@
          */
         function openConfirmDelete(id, name) {
             itemToDelete = { id, name };
-            confirmModalText.innerText = `¿Realmente desea eliminar el producto "${name}"? Esta acción no se puede deshacer.`;
+            if (confirmModalText) confirmModalText.innerText = `¿Realmente desea eliminar el producto "${name}"? Esta acción no se puede deshacer.`;
             openModal(confirmModal);
         }
 
@@ -2049,7 +2266,7 @@
 
             // Llenar selects (ya deberían estar llenos por loadWarehouses)
             
-            transferModalForm.reset();
+            if (transferModalForm) transferModalForm.reset();
             openModal(transferModal);
         }
 
@@ -2140,17 +2357,17 @@
          * Muestra el historial de traslados en el Dashboard
          */
         function loadTransferHistory() {
-            if (!transfersCollectionPath) return;
+            if (!transfersCollectionPath || !transferLoading) return;
 
             transferLoading.classList.remove('hidden');
             const q = query(collection(db, transfersCollectionPath));
 
             transfersUnsubscribe = onSnapshot(q, (snapshot) => {
-                transferLoading.classList.add('hidden');
-                transferHistoryList.innerHTML = '';
+                if (transferLoading) transferLoading.classList.add('hidden');
+                if (transferHistoryList) transferHistoryList.innerHTML = '';
                 
                 if (snapshot.empty) {
-                    transferHistoryList.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">No se han realizado traslados.</td></tr>`;
+                    if (transferHistoryList) transferHistoryList.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">No se han realizado traslados.</td></tr>`;
                     return;
                 }
                 
@@ -2166,7 +2383,7 @@
 
             }, (error) => {
                 console.error("Error al cargar historial de traslados: ", error);
-                transferLoading.innerText = "Error al cargar historial.";
+                if (transferLoading) transferLoading.innerText = "Error al cargar historial.";
             });
         }
         
@@ -2174,6 +2391,7 @@
          * Renderiza la tabla de historial de traslados
          */
         function renderTransferHistory(transfers) {
+            if (!transferHistoryList) return;
             transferHistoryList.innerHTML = '';
             
             if (transfers.length === 0) {
@@ -2203,6 +2421,7 @@
          * Filtra el historial de traslados
          */
         function filterTransferHistory() {
+            if (!transferSearch) return;
             const filter = transferSearch.value.toLowerCase();
             document.querySelectorAll('.transfer-history-row').forEach(row => {
                 if (row.dataset.search.includes(filter)) {
@@ -2237,20 +2456,24 @@
          */
         function openSaleModal() {
             // Resetear el modal de venta
-            saleForm.reset();
+            if (saleForm) saleForm.reset();
             saleCart = [];
-            saleSearchResults.innerHTML = '';
-            saleSearchResults.classList.add('hidden');
+            if (saleSearchResults) {
+                saleSearchResults.innerHTML = '';
+                saleSearchResults.classList.add('hidden');
+            }
             updateSaleCartUI();
             
             openModal(saleModal);
-            saleCustomerName.focus();
+            if (saleCustomerName) saleCustomerName.focus();
         }
 
         /**
          * Filtra la lista de productos en el modal de venta
          */
         function filterSaleSearch() {
+            if (!saleSearchInput || !saleSearchResults) return;
+            
             const filter = saleSearchInput.value.toLowerCase().trim();
             
             if (filter.length < 1) {
@@ -2335,6 +2558,8 @@
          * Actualiza la tabla del carrito de venta y el total
          */
         function updateSaleCartUI() {
+            if (!saleCartBody || !saleSubtotalDisplay || !saleTotalDisplay || !saleDiscountInput) return;
+            
             saleCartBody.innerHTML = '';
             let subtotal = 0;
 
@@ -2395,6 +2620,8 @@
                     let newQuantity = parseInt(e.target.value);
                     const item = saleCart.find(i => i.id === id);
                     
+                    if (!item) return; // Seguridad
+                    
                     if (isNaN(newQuantity) || newQuantity < 1) {
                         newQuantity = 1;
                     }
@@ -2423,7 +2650,7 @@
          */
         async function handleProcessSale(e) {
             e.preventDefault();
-            if (!inventoryCollectionPath || !salesCollectionPath) return;
+            if (!inventoryCollectionPath || !salesCollectionPath || !saleForm) return;
             
             const mainWarehouse = warehouseList.find(wh => wh.isMain);
             if (!mainWarehouse) {
@@ -2457,8 +2684,10 @@
 
             // Deshabilitar botón para evitar doble envío
             const submitButton = saleForm.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            submitButton.innerText = "Procesando...";
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerText = "Procesando...";
+            }
 
             try {
                 const batch = writeBatch(db);
@@ -2513,8 +2742,10 @@
                 showNotification("Error", "Error al procesar la venta. Intente de nuevo.", "error");
             } finally {
                 // Reactivar botón
-                submitButton.disabled = false;
-                submitButton.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Confirmar Venta';
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Confirmar Venta';
+                }
             }
         }
         
@@ -2522,17 +2753,17 @@
          * Muestra el historial de ventas
          */
         function loadSalesHistory() {
-            if (!salesCollectionPath) return;
+            if (!salesCollectionPath || !salesLoading) return;
 
             salesLoading.classList.remove('hidden');
             const q = query(collection(db, salesCollectionPath));
 
             salesUnsubscribe = onSnapshot(q, (snapshot) => {
-                salesLoading.classList.add('hidden');
-                salesHistoryList.innerHTML = '';
+                if (salesLoading) salesLoading.classList.add('hidden');
+                if (salesHistoryList) salesHistoryList.innerHTML = '';
                 
                 if (snapshot.empty) {
-                    salesHistoryList.innerHTML = `<tr><td colspan="7" class="text-center text-gray-500 py-4">No se han realizado ventas.</td></tr>`;
+                    if (salesHistoryList) salesHistoryList.innerHTML = `<tr><td colspan="7" class="text-center text-gray-500 py-4">No se han realizado ventas.</td></tr>`;
                     return;
                 }
                 
@@ -2548,7 +2779,7 @@
 
             }, (error) => {
                 console.error("Error al cargar historial de ventas: ", error);
-                salesLoading.innerText = "Error al cargar historial.";
+                if (salesLoading) salesLoading.innerText = "Error al cargar historial.";
             });
         }
         
@@ -2556,6 +2787,7 @@
          * Renderiza la tabla de historial de ventas
          */
         function renderSalesHistory(sales) {
+            if (!salesHistoryList) return;
             salesHistoryList.innerHTML = '';
             
             if (sales.length === 0) {
@@ -2589,6 +2821,7 @@
             document.querySelectorAll('.view-invoice-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.target.closest('button').dataset.id;
+                    if (!salesCollectionPath) return;
                     const saleDoc = await getDoc(doc(db, salesCollectionPath, id));
                     if (saleDoc.exists()) {
                         showInvoice({ id: saleDoc.id, ...saleDoc.data() });
@@ -2601,6 +2834,7 @@
          * Filtra el historial de ventas
          */
         function filterSalesHistory() {
+            if (!salesSearch) return;
             const filter = salesSearch.value.toLowerCase();
             document.querySelectorAll('.sales-history-row').forEach(row => {
                 if (row.dataset.search.includes(filter)) {
@@ -2650,23 +2884,27 @@
          * Abre el modal de punto de compra.
          */
         function openPurchaseModal() {
-            purchaseForm.reset();
+            if (purchaseForm) purchaseForm.reset();
             purchaseCart = [];
-            purchaseSearchResults.innerHTML = '';
-            purchaseSearchResults.classList.add('hidden');
+            if (purchaseSearchResults) {
+                purchaseSearchResults.innerHTML = '';
+                purchaseSearchResults.classList.add('hidden');
+            }
             updatePurchaseCartUI();
             
             // Asegurarse de que las bodegas estén cargadas en el select
             updateWarehouseSelects();
             
             openModal(purchaseModal);
-            purchaseSupplierName.focus();
+            if (purchaseSupplierName) purchaseSupplierName.focus();
         }
 
         /**
          * Filtra la lista de productos en el modal de compra
          */
         function filterPurchaseSearch() {
+            if (!purchaseSearchInput || !purchaseSearchResults) return;
+            
             const filter = purchaseSearchInput.value.toLowerCase().trim();
             
             if (filter.length < 1) {
@@ -2709,7 +2947,8 @@
             });
             
             document.querySelector('.purchase-quick-add')?.addEventListener('click', (e) => {
-                openQuickAddModal(e.target.dataset.name);
+                const name = e.target.dataset.name || e.target.closest('[data-name]').dataset.name;
+                openQuickAddModal(name);
             });
         }
         
@@ -2717,10 +2956,10 @@
          * Abre el modal de creación rápida de producto
          */
         function openQuickAddModal(name) {
-            quickAddForm.reset();
-            quickProductName.value = name;
+            if (quickAddForm) quickAddForm.reset();
+            if (quickProductName) quickProductName.value = name;
             openModal(quickAddModal);
-            quickProductCost.focus();
+            if (quickProductCost) quickProductCost.focus();
         }
 
         /**
@@ -2754,14 +2993,14 @@
                 });
                 
                 // Éxito
-                quickAddForm.reset();
+                if (quickAddForm) quickAddForm.reset();
                 closeModal(quickAddModal);
                 showNotification("Éxito", `Producto "${name}" creado.`);
                 
                 // Añadirlo directamente al carrito de compra
                 addProductToPurchaseCart(newDoc.id, cost);
-                purchaseSearchInput.value = '';
-                purchaseSearchResults.classList.add('hidden');
+                if (purchaseSearchInput) purchaseSearchInput.value = '';
+                if (purchaseSearchResults) purchaseSearchResults.classList.add('hidden');
 
             } catch (error) {
                 console.error("Error al añadir item rápido: ", error);
@@ -2797,6 +3036,8 @@
          * Actualiza la tabla del carrito de compra y el total
          */
         function updatePurchaseCartUI() {
+            if (!purchaseCartBody || !purchaseTotal) return;
+            
             purchaseCartBody.innerHTML = '';
             let total = 0;
 
@@ -2857,6 +3098,7 @@
                     let newCost = parseFloat(e.target.value);
                     const item = purchaseCart.find(i => i.id === id);
                     
+                    if (!item) return;
                     if (isNaN(newCost) || newCost < 0) {
                         newCost = 0;
                     }
@@ -2873,6 +3115,7 @@
                     let newQuantity = parseInt(e.target.value);
                     const item = purchaseCart.find(i => i.id === id);
                     
+                    if (!item) return;
                     if (isNaN(newQuantity) || newQuantity < 1) {
                         newQuantity = 1;
                     }
@@ -2897,7 +3140,7 @@
          */
         async function handleProcessPurchase(e) {
             e.preventDefault();
-            if (!inventoryCollectionPath || !purchasesCollectionPath) return;
+            if (!inventoryCollectionPath || !purchasesCollectionPath || !purchaseForm) return;
             
             const targetWarehouseId = purchaseWarehouseTarget.value;
             if (!targetWarehouseId) {
@@ -2922,8 +3165,10 @@
 
             // Deshabilitar botón para evitar doble envío
             const submitButton = purchaseForm.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            submitButton.innerText = "Procesando...";
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerText = "Procesando...";
+            }
 
             try {
                 const batch = writeBatch(db);
@@ -2977,8 +3222,10 @@
                 showNotification("Error", "Error al procesar la compra. Intente de nuevo.", "error");
             } finally {
                 // Reactivar botón
-                submitButton.disabled = false;
-                submitButton.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Confirmar Compra';
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Confirmar Compra';
+                }
             }
         }
         
@@ -2986,17 +3233,17 @@
          * Muestra el historial de compras
          */
         function loadPurchaseHistory() {
-            if (!purchasesCollectionPath) return;
+            if (!purchasesCollectionPath || !purchaseLoading) return;
 
             purchaseLoading.classList.remove('hidden');
             const q = query(collection(db, purchasesCollectionPath));
 
             purchasesUnsubscribe = onSnapshot(q, (snapshot) => {
-                purchaseLoading.classList.add('hidden');
-                purchaseHistoryList.innerHTML = '';
+                if (purchaseLoading) purchaseLoading.classList.add('hidden');
+                if (purchaseHistoryList) purchaseHistoryList.innerHTML = '';
                 
                 if (snapshot.empty) {
-                    purchaseHistoryList.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">No se han realizado compras.</td></tr>`;
+                    if (purchaseHistoryList) purchaseHistoryList.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">No se han realizado compras.</td></tr>`;
                     return;
                 }
                 
@@ -3012,7 +3259,7 @@
 
             }, (error) => {
                 console.error("Error al cargar historial de compras: ", error);
-                purchaseLoading.innerText = "Error al cargar historial.";
+                if (purchaseLoading) purchaseLoading.innerText = "Error al cargar historial.";
             });
         }
         
@@ -3020,6 +3267,7 @@
          * Renderiza la tabla de historial de compras
          */
         function renderPurchaseHistory(purchases) {
+            if (!purchaseHistoryList) return;
             purchaseHistoryList.innerHTML = '';
             
             if (purchases.length === 0) {
@@ -3052,6 +3300,7 @@
             document.querySelectorAll('.view-purchase-receipt-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.target.closest('button').dataset.id;
+                    if (!purchasesCollectionPath) return;
                     const purchaseDoc = await getDoc(doc(db, purchasesCollectionPath, id));
                     if (purchaseDoc.exists()) {
                         showPurchaseReceipt({ id: purchaseDoc.id, ...purchaseDoc.data() });
@@ -3064,6 +3313,7 @@
          * Filtra el historial de compras
          */
         function filterPurchaseHistory() {
+            if (!purchaseSearch) return;
             const filter = purchaseSearch.value.toLowerCase();
             document.querySelectorAll('.purchase-history-row').forEach(row => {
                 if (row.dataset.search.includes(filter)) {
@@ -3116,6 +3366,8 @@
             document.querySelectorAll('.warehouse-header').forEach(h => h.remove());
             
             const parent = warehouseHeaderTemplate.parentNode;
+            if (!parent) return;
+            
             warehouseList.forEach(wh => {
                 const th = document.createElement('th');
                 th.className = 'py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 text-center warehouse-header';
@@ -3128,7 +3380,7 @@
          * Actualiza la tabla de stock por bodega en el dashboard
          */
         function updateDashboardStockTable(products) {
-            if (!dashboardStockList) return;
+            if (!dashboardStockList || !dashboardLoading) return;
             dashboardStockList.innerHTML = '';
             
             if (products.length === 0) {
@@ -3175,7 +3427,8 @@
             modalElement.classList.add('hidden');
             
             // Comprobar si hay otros modales abiertos antes de cerrar el fondo
-            const anyModalOpen = document.querySelector('.fixed.inset-0.z-50:not(.hidden), .fixed.inset-0.z-\[60\]:not(.hidden), .fixed.inset-0.z-\[70\]:not(.hidden)');
+            // Escapando los caracteres especiales para querySelector
+            const anyModalOpen = document.querySelector('.fixed.inset-0.z-50:not(.hidden), .fixed.inset-0.z-\\[60\\]:not(.hidden), .fixed.inset-0.z-\\[70\\]:not(.hidden)');
             if (!anyModalOpen) {
                 modalBackdrop.classList.add('hidden');
             }
