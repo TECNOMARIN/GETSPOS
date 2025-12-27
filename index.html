@@ -73,12 +73,13 @@
             ShieldAlert: (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></IconBase>,
             AlertTriangle: (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>,
             Phone: (props) => <IconBase {...props}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></IconBase>,
-            MessageCircle: (props) => <IconBase {...props}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></IconBase>
+            MessageCircle: (props) => <IconBase {...props}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></IconBase>,
+            Lock: (props) => <IconBase {...props}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></IconBase>
         };
 
         // --- CONFIGURACIÓN ---
         const API_URL = 'https://script.google.com/macros/s/AKfycbz770i0j3vK5-9M2Z2EheDh9GX2x2j2KbjfFm_yNadBg5db3tEc5so58KWeIX5SwTmAZw/exec';
-        const APP_VERSION = "v2.0.10 (WA Device)";
+        const APP_VERSION = "v2.1.0 (Login)";
 
         const PORTFOLIO_CONFIG = {
             alocredit: {
@@ -117,8 +118,80 @@
             q3: { id: 'tercera', label: 'Tercera Cuota', weeksAgo: 7 }
         };
 
+        // --- COMPONENTE LOGIN ---
+        const Login = ({ onLogin }) => {
+            const [user, setUser] = useState('');
+            const [pass, setPass] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                // CAMBIO AQUÍ: Convertimos a mayúsculas para comparar
+                if (user.toUpperCase() === 'ADMIN' && pass === 'Cescode1@') {
+                    onLogin();
+                } else {
+                    setError('Credenciales incorrectas');
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+                    <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm border border-slate-200">
+                        <div className="flex justify-center mb-6">
+                            <div className="p-4 bg-indigo-50 rounded-full border border-indigo-100">
+                                <Icons.Lock className="w-8 h-8 text-indigo-600" />
+                            </div>
+                        </div>
+                        <h2 className="text-2xl font-bold text-center text-slate-800 mb-1">Bienvenido</h2>
+                        <p className="text-center text-slate-500 text-sm mb-6">Visualizador de Cartera</p>
+                        
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Usuario</label>
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        value={user}
+                                        onChange={(e) => setUser(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm"
+                                        placeholder="Ingrese su usuario"
+                                    />
+                                    <Icons.User className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Contraseña</label>
+                                <div className="relative">
+                                    <input 
+                                        type="password" 
+                                        value={pass}
+                                        onChange={(e) => setPass(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm"
+                                        placeholder="Ingrese su contraseña"
+                                    />
+                                    <Icons.ShieldAlert className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+                                </div>
+                            </div>
+                            
+                            {error && (
+                                <div className="p-3 bg-red-50 text-red-600 text-xs rounded-lg flex items-center gap-2">
+                                    <Icons.AlertTriangle className="w-4 h-4" />
+                                    {error}
+                                </div>
+                            )}
+
+                            <button type="submit" className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition transform active:scale-[0.98] shadow-sm">
+                                Ingresar al Sistema
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
         // --- COMPONENTE PRINCIPAL ---
         function App() {
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [portfolio, setPortfolio] = useState('alocredit');
             const activeConfig = PORTFOLIO_CONFIG[portfolio];
 
@@ -210,7 +283,6 @@
                     if (cleanName.length > 1) greeting += ` ${cleanName}`;
                 }
 
-                // Texto del equipo
                 let deviceText = "";
                 if (deviceName && typeof deviceName === 'string' && deviceName.trim().length > 1) {
                     deviceText = ` de su equipo ${deviceName.trim()}`;
@@ -296,7 +368,9 @@
                 }
             }, [portfolio]); 
 
-            useEffect(() => { fetchData(); }, [fetchData]);
+            useEffect(() => { 
+                if (isAuthenticated) fetchData(); 
+            }, [fetchData, isAuthenticated]);
 
             // --- MEMOS DE DATOS ---
             const { sellers, sellerColumn, devices, deviceColumn, phoneColumn, clientColumn } = useMemo(() => {
@@ -597,6 +671,11 @@
 
             const headerColorClass = activeConfig.theme === 'indigo' ? 'border-indigo-500' : 'border-blue-500';
 
+            // RENDER LOGIC
+            if (!isAuthenticated) {
+                return <Login onLogin={() => setIsAuthenticated(true)} />;
+            }
+
             return (
                 <div className="max-w-7xl mx-auto p-4 space-y-6">
                     {/* Header */}
@@ -699,7 +778,6 @@
                             <thead className="bg-slate-50 font-bold border-b">
                                 <tr>{headers.map((h, i) => {
                                     const style = getColumnStyles(h);
-                                    // Check if phone column
                                     const isPhoneCol = activeConfig.columns.phone && activeConfig.columns.phone.some(p => h.toLowerCase().includes(p));
                                     return <th key={i} className={`px-4 py-3 whitespace-nowrap ${style?.head} ${isPhoneCol ? 'min-w-[140px]' : ''}`}>{h}</th>
                                 })}</tr>
@@ -727,11 +805,8 @@
                                             // Render Celular
                                             const isPhoneCol = activeConfig.columns.phone && activeConfig.columns.phone.some(p => h.toLowerCase().includes(p));
                                             if (isPhoneCol) {
-                                                // CAPTURA DEL NOMBRE PARA EL MENSAJE
                                                 const clientVal = clientColumn ? row[clientColumn] : '';
-                                                // CAPTURA DEL EQUIPO (NUEVO)
                                                 const deviceVal = deviceColumn ? row[deviceColumn] : '';
-                                                
                                                 const clean = cleanPhoneNumber(val);
                                                 if (clean) {
                                                     return (
