@@ -8,9 +8,9 @@
     <!-- 1. Estilos (Tailwind CSS) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 2. React y ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 2. React y ReactDOM (Versiones de Producción para estabilidad) -->
+    <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     
     <!-- 3. Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -79,13 +79,26 @@
 
         // --- CONFIGURACIÓN ---
         const API_URL = 'https://script.google.com/macros/s/AKfycbz770i0j3vK5-9M2Z2EheDh9GX2x2j2KbjfFm_yNadBg5db3tEc5so58KWeIX5SwTmAZw/exec';
-        const APP_VERSION = "v2.1.0 (Login)";
+        const APP_VERSION = "v3.0.1 (Unified FPD)";
+
+        // ETIQUETAS DE CUOTAS / COHORTES
+        const QUOTA_LABELS = {
+            q1: { id: 'primera', label: 'Primera Cuota', weeksAgo: 3 }, // Legacy/Fallback
+            q2: { id: 'segunda', label: 'Segunda Cuota', weeksAgo: 6 },
+            q3: { id: 'tercera', label: 'Tercera Cuota', weeksAgo: 7 },
+            
+            // FPD UNIFICADO: Solo 1ra Cuota (ID 'primera') en diferentes tiempos
+            fpd3: { id: 'primera', label: 'FPD3: Ventas de hace 2 semanas', weeksAgo: 2 },  
+            fpd7: { id: 'primera', label: 'FPD7: Ventas de hace 3 semanas', weeksAgo: 3 }, 
+            fpd15: { id: 'primera', label: 'FPD15: Ventas de hace 4 semanas', weeksAgo: 4 }  
+        };
 
         const PORTFOLIO_CONFIG = {
             alocredit: {
                 name: "ALOCREDIT",
                 theme: "indigo",
-                quotas: ['q1'], 
+                // AHORA USA LA LÓGICA FPD COMPLETA PARA PRIMERA CUOTA
+                quotas: ['fpd3', 'fpd7', 'fpd15'], 
                 columns: {
                     seller: ['responsable', 'vendedor', 'asesor'],
                     client: ['cliente', 'nombre', 'nombres', 'nombre cliente'], 
@@ -99,7 +112,7 @@
             payjoy: {
                 name: "PAYJOY",
                 theme: "blue",
-                quotas: ['q1', 'q2', 'q3'], 
+                quotas: ['fpd3', 'fpd7', 'fpd15'], 
                 columns: {
                     seller: ['vendedor', 'asesor', 'ejecutivo'],
                     client: ['cliente', 'nombre', 'nombres', 'nombre cliente'], 
@@ -111,12 +124,6 @@
                 }
             }
         };
-        
-        const QUOTA_LABELS = {
-            q1: { id: 'primera', label: 'Primera Cuota', weeksAgo: 3 },
-            q2: { id: 'segunda', label: 'Segunda Cuota', weeksAgo: 6 },
-            q3: { id: 'tercera', label: 'Tercera Cuota', weeksAgo: 7 }
-        };
 
         // --- COMPONENTE LOGIN ---
         const Login = ({ onLogin }) => {
@@ -126,7 +133,6 @@
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                // CAMBIO AQUÍ: Convertimos a mayúsculas para comparar
                 if (user.toUpperCase() === 'ADMIN' && pass === 'Cescode1@') {
                     onLogin();
                 } else {
@@ -265,7 +271,6 @@
                 return value;
             };
 
-            // HELPERS PARA ACCIONES DE CELULAR
             const cleanPhoneNumber = (phone) => {
                 if (!phone) return '';
                 return String(phone).replace(/\D/g, '');
@@ -274,20 +279,16 @@
             const getWhatsAppLink = (phone, clientName, deviceName) => {
                 const clean = cleanPhoneNumber(phone);
                 if (!clean) return '#';
-                
                 const companyName = portfolio === 'payjoy' ? 'Payjoy' : 'Alocredit';
-                
                 let greeting = "Hola";
                 if (clientName && typeof clientName === 'string') {
                     const cleanName = clientName.trim();
                     if (cleanName.length > 1) greeting += ` ${cleanName}`;
                 }
-
                 let deviceText = "";
                 if (deviceName && typeof deviceName === 'string' && deviceName.trim().length > 1) {
                     deviceText = ` de su equipo ${deviceName.trim()}`;
                 }
-
                 const message = `${greeting}, le recordamos que la cuota${deviceText} financiado con ${companyName} se encuentra vencida. Si ya realizó el pago por favor infórmenos.`;
                 return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
             };
@@ -309,20 +310,24 @@
                 return { start, end };
             };
 
+            // LÓGICA MAESTRA DE CLASIFICACIÓN DE PAGOS
             const isObsUnpaid = (val) => {
                 const v = String(val || '').toLowerCase().trim();
                 
-                // 1. REGLA ALOCREDIT
+                // 1. REGLA POSITIVA (Gestión Exitosa / Pagado con gestión)
                 if (v.includes('gets solutions pago cuota') || v.includes('con gestion') || v.includes('con gestión')) return false;
                 
-                // 2. REGLA ALOCREDIT IMPAGO
-                if (v.includes('no se cancelo cuota') || v.includes('no cancelo') || v.includes('no canceló') || v.includes('no pago')) return true;
+                // 2. REGLA NEGATIVA (Impago Explícito)
+                if (v.includes('no se cancelo cuota') || v.includes('no cancelo') || v.includes('no canceló') || v.includes('no pago') || v.includes('no pagó')) return true;
 
-                // 3. Pagos directos
+                // 3. REGLA COMPROMISO (Impago)
+                if (v.includes('compromiso')) return true;
+
+                // 4. REGLA PAGO ORGÁNICO
                 if (v.includes('ya cancelo') || v.includes('ya canceló') || v.includes('cancelo') || v.includes('canceló') || v.includes('pagó') || v.includes('pago')) return false;
                 
-                // 4. Default
-                return v === '' || v.includes('compromiso');
+                // 5. DEFAULT (Vacío = Impago)
+                return v === '';
             };
 
             // --- FETCH DATA ---
@@ -388,8 +393,7 @@
                 return { 
                     sellers: Array.from(uniqueSellers).sort(), sellerColumn: sCol,
                     devices: Array.from(uniqueDevices).sort(), deviceColumn: dCol,
-                    phoneColumn: pCol,
-                    clientColumn: cCol
+                    phoneColumn: pCol, clientColumn: cCol
                 };
             }, [data, headers, activeConfig, findConfigColumn]);
 
@@ -399,7 +403,8 @@
                 const colFecha = findColumnName(qName, activeConfig.columns.quotaDate, headersList);
                 
                 let colObs = findColumnName(activeConfig.columns.observation, qName, headersList);
-                if (!colObs && portfolio === 'alocredit' && quotaId === 'q1') {
+                // Fallback para Alocredit (Solo 'PAGOS')
+                if (!colObs && portfolio === 'alocredit') {
                     colObs = findColumnName(activeConfig.columns.observation, '', headersList);
                 }
 
@@ -441,7 +446,8 @@
                             let quotaName = QUOTA_LABELS[fpdQuotaFilter].id;
                             
                             let obsCol = findColumnName(activeConfig.columns.observation, quotaName, headers);
-                            if (!obsCol && portfolio === 'alocredit' && fpdQuotaFilter === 'q1') {
+                            // Fallback Alocredit
+                            if (!obsCol && portfolio === 'alocredit') {
                                 obsCol = findColumnName(activeConfig.columns.observation, '', headers);
                             }
 
@@ -462,7 +468,8 @@
                    const { quota, type } = breakdownFilter;
                    let qName = QUOTA_LABELS[quota].id;
                    let colName = findColumnName(activeConfig.columns.observation, qName, headers);
-                   if (!colName && portfolio === 'alocredit' && quota === 'q1') {
+                   // Fallback Alocredit
+                   if (!colName && portfolio === 'alocredit') {
                        colName = findColumnName(activeConfig.columns.observation, '', headers);
                    }
                    
@@ -474,7 +481,7 @@
                            if (type === 'noCancelo') {
                                if (val.includes('no se cancelo cuota')) return true;
                                if (val.includes('no cancelo') || val.includes('no canceló') || val.includes('no pago')) return true;
-                               return false; 
+                               return val.includes('compromiso'); // Compromiso se agrupa con impago en el filtro
                            }
                            
                            if (type === 'conGestion') {
@@ -483,6 +490,7 @@
                            }
                            
                            if (type === 'yaCancelo') {
+                               // Excluir gestión explícita
                                if (val.includes('gets solutions pago cuota') || val.includes('ya cancelo cuota') || val.includes('con gestion')) return false;
                                return val.includes('ya cancelo') || val.includes('ya canceló') || val.includes('cancelo') || val.includes('canceló') || val.includes('pagó') || val.includes('pago');
                            }
@@ -529,10 +537,13 @@
                         return d && d >= range.start && d <= range.end;
                     });
                     const totalSales = cohortSales.length;
-                    if (totalSales === 0) return { totalSales: 0, unpaid: 0, rangeStr: `${formatDateShort(range.start)} - ${formatDateShort(range.end)}` };
+                    
+                    const rangeStr = `${formatDateShort(range.start)} - ${formatDateShort(range.end)}`;
+                    if (totalSales === 0) return { totalSales: 0, unpaid: 0, rangeStr };
 
                     let obsCol = findColumnName(activeConfig.columns.observation, qName, headers);
-                    if (!obsCol && portfolio === 'alocredit' && quotaKey === 'q1') {
+                    // Fallback para Alocredit (Solo 'PAGOS')
+                    if (!obsCol && portfolio === 'alocredit') {
                         obsCol = findColumnName(activeConfig.columns.observation, '', headers);
                     }
 
@@ -549,19 +560,21 @@
                             return isObsUnpaid(val);
                         }).length;
                     }
-                    return { totalSales, unpaid, rangeStr: `${formatDateShort(range.start)} - ${formatDateShort(range.end)}` };
+                    return { totalSales, unpaid, rangeStr };
                 };
 
-                const q1 = calculateFPD('q1');
-                const q2 = calculateFPD('q2');
-                const q3 = calculateFPD('q3');
+                const fpd3 = calculateFPD('fpd3');
+                const fpd7 = calculateFPD('fpd7');
+                const fpd15 = calculateFPD('fpd15');
 
-                let totalUnpaid = (q1?.unpaid || 0) + (q2?.unpaid || 0) + (q3?.unpaid || 0);
-                let totalSales = (q1?.totalSales || 0) + (q2?.totalSales || 0) + (q3?.totalSales || 0);
+                let totalUnpaid = 0, totalSales = 0;
+                [fpd3, fpd7, fpd15].forEach(s => {
+                    if (s) { totalUnpaid += s.unpaid; totalSales += s.totalSales; }
+                });
                 
                 const generalFPD = totalSales > 0 ? ((totalUnpaid / totalSales) * 100).toFixed(1) : 0;
 
-                return { found: true, colUsed: dateCol, generalFPD, q1, q2, q3 };
+                return { found: true, colUsed: dateCol, generalFPD, fpd3, fpd7, fpd15 };
             }, [dataForStats, headers, activeConfig, findColumnName, findConfigColumn, portfolio]);
 
             const observationStats = useMemo(() => {
@@ -572,7 +585,8 @@
                     let s = { conGestion: 0, noCancelo: 0, yaCancelo: 0, vacio: 0 };
                     
                     let col = findColumnName(activeConfig.columns.observation, qName, headers);
-                    if (!col && portfolio === 'alocredit' && quotaKey === 'q1') {
+                    // Fallback Alocredit
+                    if (!col && portfolio === 'alocredit') {
                         col = findColumnName(activeConfig.columns.observation, '', headers);
                     }
 
@@ -582,14 +596,18 @@
                         if (!val) s.vacio++;
                         else if (val.includes('no se cancelo cuota')) s.noCancelo++;
                         else if (val.includes('no cancelo') || val.includes('no canceló') || val.includes('no pago')) s.noCancelo++;
+                        else if (val.includes('compromiso')) s.noCancelo++;
+
                         else if (val.includes('gets solutions pago cuota')) s.conGestion++;
                         else if (val.includes('ya cancelo cuota') || val.includes('con gestion') || val.includes('con gestión')) s.conGestion++;
+                        
                         else if (val.includes('ya cancelo') || val.includes('ya canceló') || val.includes('cancelo') || val.includes('pagó') || val.includes('pago')) s.yaCancelo++;
                     });
                     return s;
                 }
                 return {
-                    q1: calc('q1'), q2: calc('q2'), q3: calc('q3'), found: true
+                    fpd3: calc('fpd3'), fpd7: calc('fpd7'), fpd15: calc('fpd15'),
+                    found: true
                 };
             }, [filteredData, headers, findColumnName, activeConfig, portfolio]);
 
@@ -605,7 +623,9 @@
 
             const StatCard = ({ title, stats, quotaId, fpdInfo }) => {
                 if (!stats) return null;
-                let fpdPercent = "0.0", recoverNeeded = 0, targetPercent = quotaId === 'q1' ? 10 : 20;
+                let fpdPercent = "0.0", recoverNeeded = 0, targetPercent = 10;
+                if (QUOTA_LABELS[quotaId].id !== 'primera') targetPercent = 20;
+
                 let hasSales = fpdInfo && fpdInfo.totalSales > 0;
 
                 if (hasSales) {
@@ -766,9 +786,15 @@
                         </div>
 
                         <div className={`grid grid-cols-1 md:grid-cols-${activeConfig.quotas.length} gap-4`}>
-                            {activeConfig.quotas.includes('q1') && <StatCard title="Obs. Primera Cuota" quotaId="q1" stats={observationStats.q1} fpdInfo={fpdStats.q1} />}
-                            {activeConfig.quotas.includes('q2') && <StatCard title="Obs. Segunda Cuota" quotaId="q2" stats={observationStats.q2} fpdInfo={fpdStats.q2} />}
-                            {activeConfig.quotas.includes('q3') && <StatCard title="Obs. Tercera Cuota" quotaId="q3" stats={observationStats.q3} fpdInfo={fpdStats.q3} />}
+                            {activeConfig.quotas.map(quotaId => (
+                                <StatCard 
+                                    key={quotaId}
+                                    title={QUOTA_LABELS[quotaId].label} 
+                                    quotaId={quotaId} 
+                                    stats={observationStats[quotaId]} 
+                                    fpdInfo={fpdStats[quotaId]} 
+                                />
+                            ))}
                         </div>
                     </div>
 
@@ -778,6 +804,7 @@
                             <thead className="bg-slate-50 font-bold border-b">
                                 <tr>{headers.map((h, i) => {
                                     const style = getColumnStyles(h);
+                                    // Check if phone column
                                     const isPhoneCol = activeConfig.columns.phone && activeConfig.columns.phone.some(p => h.toLowerCase().includes(p));
                                     return <th key={i} className={`px-4 py-3 whitespace-nowrap ${style?.head} ${isPhoneCol ? 'min-w-[140px]' : ''}`}>{h}</th>
                                 })}</tr>
