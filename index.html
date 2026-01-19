@@ -14,6 +14,10 @@
     
     <!-- 3. Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 4. Librerías para Reportes (PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     
     <style>
         @keyframes pulse-slow {
@@ -23,6 +27,12 @@
         .animate-pulse-slow {
             animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+        /* Scrollbar personalizada para el modal */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
         body { font-family: system-ui, -apple-system, sans-serif; }
     </style>
 </head>
@@ -54,14 +64,17 @@
             DollarSign: (p) => <IconBase {...p}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></IconBase>,
             X: (p) => <IconBase {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></IconBase>,
             Target: (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></IconBase>,
-            Handshake: (p) => <IconBase {...p}><path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-1.42-1.42l4.82-4.82a1 1 0 0 1 1.42 0l2.12 2.12a1 1 0 0 0 1.42 0l1.29-1.29a3 3 0 0 0 0-4.24l-2.12-2.12a3 3 0 0 0-4.24 0l-3.65 3.65a3 3 0 0 0 0 4.24l.88.88a1 1 0 0 1-1.42 1.42l-4.24-4.24a1 1 0 0 0-1.42 0l-2.12 2.12a3 3 0 0 0 0 4.24l2.12 2.12"/><path d="m7 13 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-1.42-1.42l4.82-4.82a1 1 0 0 1 1.42 0l2.12 2.12a1 1 0 0 0 1.42 0l1.29-1.29a3 3 0 0 0 0-4.24l-2.12-2.12a3 3 0 0 0-4.24 0l-3.65 3.65a3 3 0 0 0 0 4.24l.88.88a1 1 0 0 1-1.42 1.42l-4.24-4.24a1 1 0 0 0-1.42 0l-2.12 2.12a3 3 0 0 0 0 4.24l2.12 2.12"/></IconBase>,
+            Handshake: (p) => <IconBase {...p}><path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-1.42-1.42l4.82-4.82a1 1 0 0 1 1.42 0l2.12 2.12a1 1 0 0 0 1.42 0l1.29-1.29a3 3 0 0 0 0-4.24l-2.12-2.12a3 3 0 0 0-4.24 0l-3.65 3.65a3 3 0 0 0 0 4.24l.88.88a1 1 0 0 1-1.42 1.42l-4.24-4.24a1 1 0 0 0-1.42 0l-2.12 2.12a3 3 0 0 0 0 4.24l2.12 2.12"/></IconBase>,
             Smartphone: (p) => <IconBase {...p}><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></IconBase>,
             ShieldAlert: (p) => <IconBase {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></IconBase>,
             AlertTriangle: (p) => <IconBase {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>,
             Phone: (p) => <IconBase {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></IconBase>,
             MessageCircle: (p) => <IconBase {...p}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></IconBase>,
             Lock: (p) => <IconBase {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></IconBase>,
-            Database: (p) => <IconBase {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></IconBase>
+            Database: (p) => <IconBase {...p}><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></IconBase>,
+            // Nuevos iconos para el reporte
+            BarChart4: (p) => <IconBase {...p}><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></IconBase>,
+            Download: (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></IconBase>,
         };
 
         // --- CONFIGURACIÓN ---
@@ -200,6 +213,10 @@
             const [fpdQuotaFilter, setFpdQuotaFilter] = useState(null); 
             const [breakdownFilter, setBreakdownFilter] = useState(null);
 
+            // --- ESTADOS NUEVOS PARA REPORTE VENDEDORES ---
+            const [showSellerModal, setShowSellerModal] = useState(false);
+            const [reportFilter, setReportFilter] = useState('fpd7'); // fpd7, current, last, all
+
             // --- UTILS ---
             const parseDate = (dateVal) => {
                 if (!dateVal) return null;
@@ -310,6 +327,24 @@
                 return v === '';
             };
 
+            // --- HELPER PARA REPORTE (CLASIFICACIÓN) ---
+            const getStatus = (val) => {
+                const v = String(val || '').toLowerCase().trim();
+                if (!v) return 'empty';
+                
+                // Managed (Paid with help) or In Management
+                // Según lógica existente:
+                if (v.includes('gets solutions pago cuota') || v.includes('con gestion') || v.includes('con gestión') || v.includes('ya cancelo cuota')) return 'managed';
+                
+                // Unpaid
+                if (v.includes('no se cancelo cuota') || v.includes('no cancelo') || v.includes('no canceló') || v.includes('no pago') || v.includes('no pagó') || v.includes('compromiso')) return 'unpaid';
+                
+                // Clean (Paid organic)
+                if (v.includes('ya cancelo') || v.includes('ya canceló') || v.includes('cancelo') || v.includes('canceló') || v.includes('pagó') || v.includes('pago')) return 'clean';
+                
+                return 'empty'; 
+            };
+
             // --- FETCH DATA ---
             const fetchData = useCallback(async () => {
                 setLoading(true);
@@ -376,6 +411,130 @@
                     phoneColumn: pCol, clientColumn: cCol
                 };
             }, [data, headers, activeConfig, findConfigColumn]);
+
+            // --- NUEVO MEMO: REPORTE DE VENDEDORES ---
+            const sellerReportData = useMemo(() => {
+                if (!showSellerModal || !sellerColumn) return [];
+                
+                const dateCol = findConfigColumn(activeConfig.columns.date, headers);
+                if (!dateCol) return [];
+
+                let filterRanges = [];
+                const now = new Date();
+
+                if (reportFilter === 'fpd7') {
+                     // FPD7: Ventas de hace exactamente 3 semanas
+                     filterRanges = [getCohortRange(3)];
+                } else if (reportFilter === 'current') {
+                     // Este mes
+                     filterRanges = [{
+                        start: new Date(now.getFullYear(), now.getMonth(), 1),
+                        end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+                     }];
+                } else if (reportFilter === 'last') {
+                     // Mes pasado
+                     filterRanges = [{
+                        start: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+                        end: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
+                     }];
+                } else {
+                     // Todo
+                     filterRanges = [{
+                        start: new Date(2000, 0, 1), 
+                        end: new Date(2100, 0, 1)
+                     }];
+                }
+
+                const report = {}; 
+
+                data.forEach(row => {
+                    const d = parseDate(row[dateCol]);
+                    if (!d) return;
+                    
+                    const isInRange = filterRanges.some(r => d >= r.start && d <= r.end);
+                    if (!isInRange) return;
+
+                    const sellerName = String(row[sellerColumn] || 'Sin Asignar').trim().toUpperCase();
+                    
+                    if (!report[sellerName]) {
+                        report[sellerName] = { 
+                            name: sellerName, 
+                            total: 0, 
+                            pagas: 0, 
+                            gestion: 0, 
+                            noCancelo: 0, 
+                            vacio: 0 
+                        };
+                    }
+                    
+                    report[sellerName].total++;
+                    
+                    const qName = 'primera';
+                    let obsCol = findColumnName(activeConfig.columns.observation, qName, headers);
+                    if (!obsCol && portfolio === 'alocredit') {
+                        obsCol = findColumnName(activeConfig.columns.observation, '', headers);
+                    }
+                    
+                    const status = getStatus(obsCol ? row[obsCol] : '');
+
+                    if (status === 'clean') report[sellerName].pagas++;      // Verde
+                    else if (status === 'managed') report[sellerName].gestion++; // Azul
+                    else if (status === 'unpaid') report[sellerName].noCancelo++; // Rojo
+                    else report[sellerName].vacio++; // Sin dato
+                });
+
+                return Object.values(report).map(r => {
+                    const numerator = r.noCancelo + r.gestion;
+                    const index = r.total > 0 ? (numerator / r.total) * 100 : 0;
+                    return { ...r, index: index.toFixed(1) };
+                }).sort((a, b) => b.index - a.index);
+
+            }, [showSellerModal, reportFilter, data, headers, activeConfig, findColumnName, findConfigColumn, portfolio, sellerColumn]);
+
+            // --- EXPORTAR PDF ---
+            const handleExportPDF = () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                const tableColumn = ["Vendedor", "Total", "Pagas", "Gestión", "No Canc.", "Sin Dato", "Mora %"];
+                const tableRows = [];
+
+                sellerReportData.forEach(row => {
+                    const rowData = [
+                        row.name,
+                        row.total,
+                        row.pagas,
+                        row.gestion,
+                        row.noCancelo,
+                        row.vacio,
+                        `${row.index}%`
+                    ];
+                    tableRows.push(rowData);
+                });
+
+                doc.setFontSize(16);
+                doc.text(`Reporte de Vendedores - ${portfolio.toUpperCase()}`, 14, 15);
+                
+                doc.setFontSize(10);
+                const filterName = reportFilter === 'fpd7' ? 'FPD7 (3 Semanas)' : 
+                                   reportFilter === 'current' ? 'Este Mes' : 
+                                   reportFilter === 'last' ? 'Mes Pasado' : 'Toda la Cartera';
+                                   
+                doc.text(`Filtro Aplicado: ${filterName}`, 14, 22);
+                doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 28);
+
+                doc.autoTable({
+                    head: [tableColumn],
+                    body: tableRows,
+                    startY: 35,
+                    theme: 'grid',
+                    headStyles: { fillColor: [79, 70, 229] }, 
+                    styles: { fontSize: 9 },
+                    alternateRowStyles: { fillColor: [245, 247, 255] }
+                });
+
+                doc.save(`Reporte_Vendedores_${portfolio}_${new Date().toISOString().slice(0,10)}.pdf`);
+            };
 
             const checkSpecificQuotaAlert = (row, headersList, quotaId) => {
                 const qName = QUOTA_LABELS[quotaId]?.id; 
@@ -675,7 +834,16 @@
                                 </div>
                             </div>
                             <div className="h-6 w-px bg-slate-200 mx-1"></div>
-                            <button onClick={fetchData} disabled={loading} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-md transition-all disabled:opacity-50" title="Recargar datos"><Icons.RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
+                            
+                            {/* BOTÓN REPORTE DE VENDEDORES MEJORADO */}
+                            <button 
+                                onClick={() => setShowSellerModal(true)} 
+                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-lg hover:from-indigo-700 hover:to-violet-700 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 font-bold text-sm"
+                            >
+                                <Icons.BarChart4 className="w-4 h-4"/> Reporte Vendedores
+                            </button>
+
+                            <button onClick={fetchData} disabled={loading} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-md transition-all disabled:opacity-50" title="Recargar datos"><Icons.RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /></button>
                         </div>
                     </div>
 
@@ -826,6 +994,100 @@
                             </table>
                         </div>
                     </div>
+
+                    {/* --- MODAL REPORTE VENDEDORES --- */}
+                    {showSellerModal && (
+                        <div id="printable-modal-content" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+                                
+                                {/* Header del Modal */}
+                                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-2xl no-print">
+                                    <div className="flex items-center gap-4">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                                <Icons.BarChart4 className="w-6 h-6 text-indigo-600"/> 
+                                                Rendimiento por Vendedor
+                                            </h3>
+                                            <p className="text-xs text-slate-500 mt-1">Análisis de riesgo y gestión</p>
+                                        </div>
+                                        
+                                        {/* Selector de Filtro de Tiempo */}
+                                        <div className="relative">
+                                            <select 
+                                                value={reportFilter} 
+                                                onChange={(e) => setReportFilter(e.target.value)}
+                                                className="appearance-none bg-white border border-slate-300 text-slate-700 text-sm py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer font-medium"
+                                            >
+                                                <option value="fpd7">🎯 FPD7 (3 Semanas)</option>
+                                                <option value="current">📅 Este Mes</option>
+                                                <option value="last">⏮️ Mes Pasado</option>
+                                                <option value="all">📂 Toda la Cartera</option>
+                                            </select>
+                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                                                <svg className="fill-current h-4 w-4" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Botones de Acción */}
+                                    <div className="flex gap-2">
+                                        <button 
+                                            type="button"
+                                            onClick={handleExportPDF} 
+                                            className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-md hover:bg-indigo-100 transition-colors font-bold text-sm" 
+                                            title="Descargar PDF"
+                                        >
+                                            <Icons.Download className="w-4 h-4"/> Exportar PDF
+                                        </button>
+                                        <button onClick={() => setShowSellerModal(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors">
+                                            <Icons.X className="w-6 h-6"/>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Tabla de Datos */}
+                                <div className="flex-1 overflow-auto p-0 custom-scrollbar">
+                                    <table className="w-full text-sm text-left border-collapse">
+                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm">
+                                            <tr>
+                                                <th className="px-6 py-4 font-semibold border-b border-slate-200">Vendedor</th>
+                                                <th className="px-4 py-4 text-center font-semibold border-b border-slate-200">Total</th>
+                                                <th className="px-4 py-4 text-center font-semibold text-emerald-600 border-b border-slate-200">Pagas</th>
+                                                <th className="px-4 py-4 text-center font-semibold text-blue-600 border-b border-slate-200">Gestión</th>
+                                                <th className="px-4 py-4 text-center font-semibold text-rose-600 border-b border-slate-200">No Canc.</th>
+                                                <th className="px-4 py-4 text-center font-semibold text-slate-400 border-b border-slate-200">Sin Dato</th>
+                                                <th className="px-6 py-4 text-right font-semibold border-b border-slate-200">Índice Mora</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {sellerReportData.length > 0 ? sellerReportData.map((row, idx) => (
+                                                <tr key={idx} className="hover:bg-indigo-50/30 transition-colors">
+                                                    <td className="px-6 py-3 font-medium text-slate-700">{row.name}</td>
+                                                    <td className="px-4 py-3 text-center font-bold text-slate-800">{row.total}</td>
+                                                    <td className="px-4 py-3 text-center"><span className="inline-block px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md font-medium text-xs">{row.pagas}</span></td>
+                                                    <td className="px-4 py-3 text-center"><span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-medium text-xs">{row.gestion}</span></td>
+                                                    <td className="px-4 py-3 text-center"><span className="inline-block px-2 py-1 bg-rose-50 text-rose-700 rounded-md font-medium text-xs">{row.noCancelo}</span></td>
+                                                    <td className="px-4 py-3 text-center text-slate-400 text-xs">{row.vacio}</td>
+                                                    <td className="px-6 py-3 text-right">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${parseFloat(row.index) > 20 ? 'bg-rose-100 text-rose-700 border-rose-200' : parseFloat(row.index) > 10 ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
+                                                            {row.index}%
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            )) : <tr><td colSpan="7" className="px-6 py-12 text-center text-slate-400 italic">No hay datos para el periodo seleccionado.</td></tr>}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                {/* Footer Informativo */}
+                                <div className="p-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-500 flex justify-between rounded-b-2xl no-print">
+                                    <span>* Mora = (No Canceló + Con Gestión) / Total Ventas</span>
+                                    <span>Datos actualizados al momento</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             );
         }
