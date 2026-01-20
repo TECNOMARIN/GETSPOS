@@ -80,7 +80,7 @@
 
         // --- CONFIGURACIÓN ---
         const API_URL = 'https://script.google.com/macros/s/AKfycbz770i0j3vK5-9M2Z2EheDh9GX2x2j2KbjfFm_yNadBg5db3tEc5so58KWeIX5SwTmAZw/exec';
-        const APP_VERSION = "v3.8.0 (Drill-down Vendedores)";
+        const APP_VERSION = "v3.12.0 (Reporte con Por Vencer)";
 
         const QUOTA_LABELS = {
             q1: { id: 'primera', label: 'Primera Cuota', weeksAgo: 3 },
@@ -104,7 +104,6 @@
                     quotaDate: 'cuota',
                     paymentStatus: ['pagos'], 
                     comments: ['comentarios', 'observaciones', 'gestion'],
-                    // NUEVOS CAMPOS PARA DETALLE
                     id: ['cedula', 'documento', 'cc', 'nit', 'id'],
                     email: ['email', 'correo', 'mail']
                 }
@@ -222,7 +221,7 @@
             // Reporte Vendedores
             const [showSellerModal, setShowSellerModal] = useState(false);
             const [reportFilter, setReportFilter] = useState('fpd7');
-            const [detailSeller, setDetailSeller] = useState(null); // Nuevo estado para Drill-down
+            const [detailSeller, setDetailSeller] = useState(null); 
 
             // --- ESTADOS PARA EDICIÓN ---
             const [editModal, setEditModal] = useState({ show: false, row: null, colName: null, currentValue: '' });
@@ -334,23 +333,17 @@
 
             const isObsUnpaid = (val) => {
                 const v = String(val || '').toLowerCase().trim();
-                // Reglas estrictas de PAGO vs NO PAGO (basadas en columna PAGOS)
                 if (v.includes('pago') || v.includes('pagó') || v.includes('cancelo') || v.includes('canceló')) {
-                    if (v.includes('no se') || v.includes('no cancelo') || v.includes('no pago')) return true; // Falso positivo de "no pago"
-                    return false; // Pagó
+                    if (v.includes('no se') || v.includes('no cancelo') || v.includes('no pago')) return true; 
+                    return false; 
                 }
-                
-                // Si está vacío o tiene texto de compromiso pero no de pago confirmado
                 if (v.includes('compromiso') || v === '' || v.includes('pendiente')) return true;
-                
-                // Por defecto, si tiene algo escrito pero no dice "pago", asumimos mora
                 return true;
             };
 
             const getStatus = (val) => {
                 const v = String(val || '').toLowerCase().trim();
                 if (!v) return 'empty';
-                // Lógica simple para reporte
                 if (v.includes('pago') || v.includes('pagó') || v.includes('cancelo') || v.includes('canceló')) {
                      if (v.includes('no se') || v.includes('no cancelo') || v.includes('no pago')) return 'unpaid';
                      return 'clean';
@@ -426,7 +419,7 @@
                 };
             }, [data, headers, activeConfig, findConfigColumn]);
 
-            // --- REPORTE DE VENDEDORES (Corregido para usar columna PAGOS) ---
+            // --- REPORTE DE VENDEDORES (CON LÓGICA 'POR VENCER') ---
             const sellerReportData = useMemo(() => {
                 if (!showSellerModal || !sellerColumn) return [];
                 const dateCol = findConfigColumn(activeConfig.columns.date, headers);
@@ -435,21 +428,10 @@
                 let filterRanges = [];
                 const now = new Date();
 
-                if (reportFilter === 'fpd7') {
-                     filterRanges = [getCohortRange(3)];
-                } else if (reportFilter === 'current') {
-                     filterRanges = [{
-                        start: new Date(now.getFullYear(), now.getMonth(), 1),
-                        end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-                     }];
-                } else if (reportFilter === 'last') {
-                     filterRanges = [{
-                        start: new Date(now.getFullYear(), now.getMonth() - 1, 1),
-                        end: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
-                     }];
-                } else {
-                     filterRanges = [{ start: new Date(2000, 0, 1), end: new Date(2100, 0, 1) }];
-                }
+                if (reportFilter === 'fpd7') filterRanges = [getCohortRange(3)];
+                else if (reportFilter === 'current') filterRanges = [{start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)}];
+                else if (reportFilter === 'last') filterRanges = [{start: new Date(now.getFullYear(), now.getMonth() - 1, 1), end: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)}];
+                else filterRanges = [{start: new Date(2000, 0, 1), end: new Date(2100, 0, 1)}];
 
                 const report = {}; 
 
@@ -461,44 +443,63 @@
 
                     const sellerName = String(row[sellerColumn] || 'Sin Asignar').trim().toUpperCase();
                     if (!report[sellerName]) {
-                        report[sellerName] = { name: sellerName, total: 0, pagas: 0, gestion: 0, noCancelo: 0, vacio: 0 };
+                        report[sellerName] = { name: sellerName, total: 0, pagas: 0, gestion: 0, noCancelo: 0, vacio: 0, porVencer: 0 };
                     }
                     report[sellerName].total++;
                     
-                    // Buscamos la columna de estado de PAGO (paymentStatus)
                     const qName = 'primera';
                     let statusCol = findColumnName(activeConfig.columns.paymentStatus, qName, headers);
-                    // FALLBACK INTELIGENTE
-                    if (!statusCol) {
-                        statusCol = findColumnName(activeConfig.columns.paymentStatus, '', headers);
-                    }
+                    if (!statusCol) statusCol = findColumnName(activeConfig.columns.paymentStatus, '', headers);
                     
                     const status = getStatus(statusCol ? row[statusCol] : '');
-                    if (status === 'clean') report[sellerName].pagas++;      
-                    else if (status === 'managed') report[sellerName].gestion++; 
-                    else if (status === 'unpaid') report[sellerName].noCancelo++; 
-                    else report[sellerName].vacio++; 
+
+                    // --- CÁLCULO FECHA VENCIMIENTO ---
+                    const dueDate = new Date(d);
+                    dueDate.setDate(d.getDate() + 14);
+                    
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const dueDateCheck = new Date(dueDate);
+                    dueDateCheck.setHours(0,0,0,0);
+
+                    // --- CLASIFICACIÓN ---
+                    if (status === 'clean') {
+                        report[sellerName].pagas++;
+                    } else if (status === 'managed') {
+                        report[sellerName].gestion++;
+                    } else {
+                        // Es 'unpaid' o 'empty'
+                        if (dueDateCheck >= today) {
+                            report[sellerName].porVencer++;
+                        } else if (status === 'unpaid') {
+                            report[sellerName].noCancelo++;
+                        } else {
+                            report[sellerName].vacio++; // empty + vencido
+                        }
+                    }
                 });
 
                 return Object.values(report).map(r => {
+                    // ÍNDICE DE MORA REAL = (No Canceló + Gestión) / Total
+                    // Excluimos "Por Vencer" porque están a tiempo
                     const numerator = r.noCancelo + r.gestion;
                     const index = r.total > 0 ? (numerator / r.total) * 100 : 0;
                     return { ...r, index: index.toFixed(1) };
                 }).sort((a, b) => b.index - a.index);
             }, [showSellerModal, reportFilter, data, headers, activeConfig, findColumnName, findConfigColumn, portfolio, sellerColumn]);
 
-            // --- DETALLE VENDEDOR (DRILL-DOWN) ---
+            // --- DETALLE VENDEDOR (DRILL-DOWN) + LÓGICA 'POR VENCER' ---
             const sellerDetailData = useMemo(() => {
                 if (!detailSeller) return [];
                 const dateCol = findConfigColumn(activeConfig.columns.date, headers);
-                // Encontrar nuevas columnas
+                
                 const idCol = findConfigColumn(activeConfig.columns.id, headers);
                 const emailCol = findConfigColumn(activeConfig.columns.email, headers);
                 const phoneCol = findConfigColumn(activeConfig.columns.phone, headers);
                 const clientCol = findConfigColumn(activeConfig.columns.client, headers);
                 const deviceCol = findConfigColumn(activeConfig.columns.device, headers);
+                const commentsCol = findConfigColumn(activeConfig.columns.comments, headers);
 
-                // Reutilizar rango de fechas
                 let filterRanges = [];
                 const now = new Date();
                 if (reportFilter === 'fpd7') filterRanges = [getCohortRange(3)];
@@ -517,11 +518,24 @@
                     const rowSeller = String(row[sellerColumn] || 'Sin Asignar').trim().toUpperCase();
                     if (rowSeller !== detailSeller) return;
 
-                    // Estado
                     const qName = 'primera';
                     let statusCol = findColumnName(activeConfig.columns.paymentStatus, qName, headers);
                     if (!statusCol) statusCol = findColumnName(activeConfig.columns.paymentStatus, '', headers);
-                    const status = getStatus(statusCol ? row[statusCol] : '');
+                    let status = getStatus(statusCol ? row[statusCol] : '');
+
+                    // --- CÁLCULO FECHA VENCIMIENTO ---
+                    const dueDate = new Date(d);
+                    dueDate.setDate(d.getDate() + 14);
+                    const dueDateStr = dueDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const dueDateCheck = new Date(dueDate);
+                    dueDateCheck.setHours(0,0,0,0);
+
+                    if ((status === 'unpaid' || status === 'empty') && dueDateCheck >= today) {
+                        status = 'upcoming';
+                    }
 
                     result.push({
                         name: clientCol ? row[clientCol] : '-',
@@ -529,14 +543,20 @@
                         phone: phoneCol ? row[phoneCol] : '-',
                         email: emailCol ? row[emailCol] : '-',
                         device: deviceCol ? row[deviceCol] : '-',
-                        status: status === 'clean' ? 'Pagó' : status === 'managed' ? 'Gestión' : status === 'unpaid' ? 'Mora' : 'Sin Dato',
-                        statusCode: status
+                        dueDate: dueDateStr, 
+                        status: status === 'clean' ? 'Pagó' : 
+                                status === 'managed' ? 'Gestión' : 
+                                status === 'upcoming' ? 'Por Vencer' : 
+                                status === 'unpaid' ? 'Mora' : 'Sin Dato',
+                        statusCode: status,
+                        originalRow: row, 
+                        commentColName: commentsCol, 
+                        currentComment: commentsCol ? row[commentsCol] : '' 
                     });
                 });
                 
-                // Ordenar: Mora primero
                 return result.sort((a,b) => {
-                    const weight = { 'Mora': 3, 'Gestión': 2, 'Sin Dato': 1, 'Pagó': 0 };
+                    const weight = { 'Mora': 4, 'Gestión': 3, 'Por Vencer': 2, 'Sin Dato': 1, 'Pagó': 0 };
                     return weight[b.status] - weight[a.status];
                 });
 
@@ -546,10 +566,10 @@
             const handleExportPDF = () => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
-                const tableColumn = ["Vendedor", "Total", "Pagas", "Gestión", "No Canc.", "Sin Dato", "Mora %"];
+                const tableColumn = ["Vendedor", "Total", "Pagas", "Gestión", "No Canc.", "Por Vencer", "Sin Dato", "Mora %"];
                 const tableRows = [];
                 sellerReportData.forEach(row => {
-                    tableRows.push([row.name, row.total, row.pagas, row.gestion, row.noCancelo, row.vacio, `${row.index}%`]);
+                    tableRows.push([row.name, row.total, row.pagas, row.gestion, row.noCancelo, row.porVencer, row.vacio, `${row.index}%`]);
                 });
                 doc.setFontSize(16);
                 doc.text(`Reporte de Vendedores - ${portfolio.toUpperCase()}`, 14, 15);
@@ -563,7 +583,7 @@
                     startY: 35,
                     theme: 'grid',
                     headStyles: { fillColor: [79, 70, 229] }, 
-                    styles: { fontSize: 9 },
+                    styles: { fontSize: 8 },
                     alternateRowStyles: { fillColor: [245, 247, 255] }
                 });
                 doc.save(`Reporte_Vendedores_${portfolio}_${new Date().toISOString().slice(0,10)}.pdf`);
@@ -572,10 +592,10 @@
             const handleExportDetailPDF = () => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
-                const tableColumn = ["Cliente", "Cédula", "Celular", "Correo", "Equipo", "Estado"];
+                const tableColumn = ["Cliente", "Cédula", "Celular", "Equipo", "Vencimiento", "Estado"];
                 const tableRows = [];
                 sellerDetailData.forEach(row => {
-                    tableRows.push([row.name, row.id, row.phone, row.email, row.device, row.status]);
+                    tableRows.push([row.name, row.id, row.phone, row.device, row.dueDate, row.status]);
                 });
                 
                 doc.setFontSize(16);
@@ -590,13 +610,13 @@
                     theme: 'grid',
                     headStyles: { fillColor: [63, 81, 181] }, 
                     styles: { fontSize: 8 },
-                    // Colorear filas según estado
                     didParseCell: function(data) {
                         if (data.section === 'body' && data.column.index === 5) {
                             const val = data.cell.raw;
-                            if (val === 'Mora') data.cell.styles.textColor = [220, 38, 38];
-                            else if (val === 'Pagó') data.cell.styles.textColor = [22, 163, 74];
-                            else if (val === 'Gestión') data.cell.styles.textColor = [37, 99, 235];
+                            if (val === 'Mora') data.cell.styles.textColor = [220, 38, 38]; 
+                            else if (val === 'Pagó') data.cell.styles.textColor = [22, 163, 74]; 
+                            else if (val === 'Gestión') data.cell.styles.textColor = [37, 99, 235]; 
+                            else if (val === 'Por Vencer') data.cell.styles.textColor = [217, 119, 6]; 
                         }
                     }
                 });
@@ -615,7 +635,7 @@
                     phone: phone,
                     comment: editModal.currentValue,
                     column: editModal.colName, 
-                    append: true // Modo historial
+                    append: true 
                 };
 
                 try {
@@ -626,7 +646,6 @@
                         body: JSON.stringify(payload)
                     });
 
-                    // Optimistic UI Update
                     const newData = data.map(r => {
                          if (String(r[phoneColumn]).replace(/\D/g, '') === String(phone).replace(/\D/g, '')) {
                              const dateStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
@@ -653,13 +672,8 @@
                 if (!qName) return false;
                 const colFecha = findColumnName(qName, activeConfig.columns.quotaDate, headersList);
                 
-                // BUSCA COLUMNA DE PAGOS para saber el estado
                 let colStatus = findColumnName(activeConfig.columns.paymentStatus, qName, headersList);
-                
-                // FALLBACK INTELIGENTE (Crucial para Payjoy "Pagos" vs "Primera Pagos")
-                if (!colStatus) {
-                    colStatus = findColumnName(activeConfig.columns.paymentStatus, '', headersList);
-                }
+                if (!colStatus) colStatus = findColumnName(activeConfig.columns.paymentStatus, '', headersList);
 
                 if (colFecha && colStatus) {
                     const fechaVal = row[colFecha];
@@ -689,7 +703,6 @@
                             const d = parseDate(row[dateCol]);
                             if (!d || d < range.start || d > range.end) return false;
                             
-                            // FILTRO POR MORA: Mira columna de PAGOS
                             let quotaName = QUOTA_LABELS[fpdQuotaFilter].id;
                             let statusCol = findColumnName(activeConfig.columns.paymentStatus, quotaName, headers);
                             if (!statusCol) statusCol = findColumnName(activeConfig.columns.paymentStatus, '', headers);
@@ -731,7 +744,6 @@
                     const rangeStr = `${formatDateShort(range.start)} - ${formatDateShort(range.end)}`;
                     if (totalSales === 0) return { totalSales: 0, unpaid: 0, rangeStr };
                     
-                    // STATS: Mira columna PAGOS
                     let statusCol = findColumnName(activeConfig.columns.paymentStatus, QUOTA_LABELS[quotaKey].id, headers);
                     if (!statusCol) statusCol = findColumnName(activeConfig.columns.paymentStatus, '', headers);
                     let unpaid = statusCol ? cohortSales.filter(row => isObsUnpaid(row[statusCol])).length : 0;
@@ -750,22 +762,17 @@
                 const calc = (quotaKey) => {
                     const qName = QUOTA_LABELS[quotaKey].id;
                     let s = { conGestion: 0, noCancelo: 0, yaCancelo: 0, vacio: 0 };
-                    
-                    // STATS DETALLADAS: Mira columna PAGOS
                     let col = findColumnName(activeConfig.columns.paymentStatus, qName, headers);
                     if (!col) col = findColumnName(activeConfig.columns.paymentStatus, '', headers);
-                    
                     if(!col) return s;
                     filteredData.forEach(row => {
                         const val = String(row[col] || '').toLowerCase().trim();
-                        // Mismo status que getStatus
                         if (!val) s.vacio++;
                         else if (val.includes('no se cancelo cuota')) s.noCancelo++;
                         else if (val.includes('no cancelo') || val.includes('no canceló') || val.includes('no pago')) s.noCancelo++;
-                        
-                        else if (val.includes('pago') || val.includes('cancelo')) s.yaCancelo++; // Si dice pago es pago
+                        else if (val.includes('pago') || val.includes('cancelo')) s.yaCancelo++; 
                         else if (val.includes('compromiso') || val.includes('gestion')) s.conGestion++;
-                        else s.noCancelo++; // Default a no cancelo si hay texto raro
+                        else s.noCancelo++;
                     });
                     return s;
                 }
@@ -1037,7 +1044,7 @@
 
                     {/* --- MODAL DE EDICIÓN (COMENTARIOS) --- */}
                     {editModal.show && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                              <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col transform transition-all scale-100">
                                 <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                                     <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -1120,6 +1127,8 @@
                                                 <th className="px-4 py-4 text-center font-semibold text-emerald-600 border-b border-slate-200">Pagas</th>
                                                 <th className="px-4 py-4 text-center font-semibold text-blue-600 border-b border-slate-200">Gestión</th>
                                                 <th className="px-4 py-4 text-center font-semibold text-rose-600 border-b border-slate-200">No Canc.</th>
+                                                {/* NUEVA COLUMNA VISUAL */}
+                                                <th className="px-4 py-4 text-center font-semibold text-amber-600 border-b border-slate-200">Por Vencer</th>
                                                 <th className="px-4 py-4 text-center font-semibold text-slate-400 border-b border-slate-200">Sin Dato</th>
                                                 <th className="px-6 py-4 text-right font-semibold border-b border-slate-200">Índice Mora</th>
                                             </tr>
@@ -1132,9 +1141,10 @@
                                                     <td className="px-4 py-3 text-center"><span className="inline-block px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md font-medium text-xs">{row.pagas}</span></td>
                                                     <td className="px-4 py-3 text-center"><span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-medium text-xs">{row.gestion}</span></td>
                                                     <td className="px-4 py-3 text-center"><span className="inline-block px-2 py-1 bg-rose-50 text-rose-700 rounded-md font-medium text-xs">{row.noCancelo}</span></td>
+                                                    {/* CELDA POR VENCER */}
+                                                    <td className="px-4 py-3 text-center"><span className="inline-block px-2 py-1 bg-amber-50 text-amber-700 rounded-md font-medium text-xs">{row.porVencer}</span></td>
                                                     <td className="px-4 py-3 text-center text-slate-400 text-xs">{row.vacio}</td>
                                                     <td className="px-6 py-3 text-right">
-                                                        {/* BOTÓN CLICKABLE PARA DRILL-DOWN */}
                                                         <button 
                                                             onClick={() => setDetailSeller(row.name)}
                                                             className={`px-3 py-1 rounded-full text-xs font-bold border transition-transform hover:scale-105 active:scale-95 ${parseFloat(row.index) > 20 ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200' : parseFloat(row.index) > 10 ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200'}`}
@@ -1144,22 +1154,22 @@
                                                         </button>
                                                     </td>
                                                 </tr>
-                                            )) : <tr><td colSpan="7" className="px-6 py-12 text-center text-slate-400 italic">No hay datos para el periodo seleccionado.</td></tr>}
+                                            )) : <tr><td colSpan="8" className="px-6 py-12 text-center text-slate-400 italic">No hay datos para el periodo seleccionado.</td></tr>}
                                         </tbody>
                                     </table>
                                 </div>
                                 <div className="p-4 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-500 flex justify-between rounded-b-2xl no-print">
-                                    <span>* Mora = (No Canceló + Con Gestión) / Total Ventas</span>
+                                    <span>* Mora = (No Canceló + Con Gestión) / Total Ventas. "Por Vencer" NO afecta el índice negativo.</span>
                                     <span>Haz clic en el % para ver detalle</span>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* --- MODAL DETALLE CLIENTES (NIVEL 2) --- */}
+                    {/* --- MODAL DETALLE CLIENTES (NIVEL 2 - CON GESTIÓN) --- */}
                     {detailSeller && (
                         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                            <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+                            <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
                                 <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center rounded-t-2xl">
                                     <div className="flex items-center gap-3">
                                         <button onClick={() => setDetailSeller(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors mr-2">
@@ -1170,7 +1180,7 @@
                                                 <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-sm uppercase">Vendedor</span> 
                                                 {detailSeller}
                                             </h3>
-                                            <p className="text-xs text-slate-500 mt-0.5">Listado detallado de clientes</p>
+                                            <p className="text-xs text-slate-500 mt-0.5">Gestión y auditoría de clientes</p>
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
@@ -1189,29 +1199,54 @@
                                                 <th className="px-4 py-3 font-semibold border-b border-slate-200">Cliente</th>
                                                 <th className="px-4 py-3 font-semibold border-b border-slate-200">Cédula</th>
                                                 <th className="px-4 py-3 font-semibold border-b border-slate-200">Celular</th>
-                                                <th className="px-4 py-3 font-semibold border-b border-slate-200">Correo</th>
                                                 <th className="px-4 py-3 font-semibold border-b border-slate-200">Equipo</th>
+                                                <th className="px-4 py-3 text-center font-semibold border-b border-slate-200">Vencimiento</th>
                                                 <th className="px-4 py-3 text-center font-semibold border-b border-slate-200">Estado</th>
+                                                <th className="px-4 py-3 text-center font-semibold border-b border-slate-200 bg-slate-100">Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {sellerDetailData.length > 0 ? sellerDetailData.map((row, idx) => (
-                                                <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-4 py-2.5 font-medium text-slate-700">{row.name}</td>
-                                                    <td className="px-4 py-2.5 text-slate-500 font-mono text-xs">{row.id}</td>
-                                                    <td className="px-4 py-2.5 text-slate-500 font-mono text-xs">{row.phone}</td>
-                                                    <td className="px-4 py-2.5 text-slate-500 text-xs truncate max-w-[150px]" title={row.email}>{row.email}</td>
-                                                    <td className="px-4 py-2.5 text-slate-600 text-xs">{row.device}</td>
-                                                    <td className="px-4 py-2.5 text-center">
-                                                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide 
-                                                            ${row.statusCode === 'unpaid' ? 'bg-rose-100 text-rose-700' : 
-                                                              row.statusCode === 'managed' ? 'bg-blue-100 text-blue-700' : 
-                                                              row.statusCode === 'clean' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                                                            {row.status}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            )) : <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-400 italic">No se encontraron clientes para este vendedor en el periodo.</td></tr>}
+                                            {sellerDetailData.length > 0 ? sellerDetailData.map((row, idx) => {
+                                                const cleanPhone = cleanPhoneNumber(row.phone);
+                                                return (
+                                                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                        <td className="px-4 py-2.5 font-medium text-slate-700 max-w-[150px] truncate" title={row.name}>{row.name}</td>
+                                                        <td className="px-4 py-2.5 text-slate-500 font-mono text-xs">{row.id}</td>
+                                                        <td className="px-4 py-2.5 text-slate-500 font-mono text-xs">{row.phone}</td>
+                                                        <td className="px-4 py-2.5 text-slate-600 text-xs">{row.device}</td>
+                                                        <td className="px-4 py-2.5 text-center text-slate-500 text-xs">{row.dueDate}</td>
+                                                        <td className="px-4 py-2.5 text-center">
+                                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide 
+                                                                ${row.statusCode === 'unpaid' ? 'bg-rose-100 text-rose-700' : 
+                                                                row.statusCode === 'managed' ? 'bg-blue-100 text-blue-700' : 
+                                                                row.statusCode === 'upcoming' ? 'bg-amber-100 text-amber-700' : 
+                                                                row.statusCode === 'clean' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                                {row.status}
+                                                            </span>
+                                                        </td>
+                                                        {/* COLUMNA DE ACCIONES */}
+                                                        <td className="px-4 py-2.5 text-center bg-slate-50/50">
+                                                            <div className="flex justify-center gap-1">
+                                                                {cleanPhone && (
+                                                                    <>
+                                                                        <a href={getWhatsAppLink(row.phone, row.name, row.device)} target="_blank" className="p-1.5 bg-green-100 text-green-700 rounded hover:bg-green-200 border border-green-200 transition-colors" title="WhatsApp"><Icons.MessageCircle className="w-3.5 h-3.5"/></a>
+                                                                        <a href={`tel:${cleanPhone}`} className="p-1.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 border border-blue-200 transition-colors" title="Llamar"><Icons.Phone className="w-3.5 h-3.5"/></a>
+                                                                    </>
+                                                                )}
+                                                                {row.commentColName && (
+                                                                    <button 
+                                                                        onClick={() => setEditModal({ show: true, row: row.originalRow, colName: row.commentColName, currentValue: String(row.currentComment || '') })}
+                                                                        className="p-1.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 border border-indigo-200 transition-colors"
+                                                                        title="Editar Gestión"
+                                                                    >
+                                                                        <Icons.Edit2 className="w-3.5 h-3.5"/>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }) : <tr><td colSpan="7" className="px-6 py-12 text-center text-slate-400 italic">No se encontraron clientes para este vendedor en el periodo.</td></tr>}
                                         </tbody>
                                     </table>
                                 </div>
