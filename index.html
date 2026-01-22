@@ -75,12 +75,13 @@
             BarChart4: (p) => <IconBase {...p}><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></IconBase>,
             Download: (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></IconBase>,
             Edit2: (p) => <IconBase {...p}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></IconBase>,
-            ArrowLeft: (p) => <IconBase {...p}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></IconBase>
+            ArrowLeft: (p) => <IconBase {...p}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></IconBase>,
+            Clock: (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>
         };
 
         // --- CONFIGURACIÓN ---
         const API_URL = 'https://script.google.com/macros/s/AKfycbz770i0j3vK5-9M2Z2EheDh9GX2x2j2KbjfFm_yNadBg5db3tEc5so58KWeIX5SwTmAZw/exec';
-        const APP_VERSION = "v3.12.0 (Reporte con Por Vencer)";
+        const APP_VERSION = "v3.14.0 (FPD3 + Por Vencer)";
 
         const QUOTA_LABELS = {
             q1: { id: 'primera', label: 'Primera Cuota', weeksAgo: 3 },
@@ -728,6 +729,7 @@
                 return stats;
             }, [dataForStats, headers, activeConfig]);
 
+            // --- FPD STATS (CORREGIDO PARA 'POR VENCER') ---
             const fpdStats = useMemo(() => {
                 const dateCol = findConfigColumn(activeConfig.columns.date, headers);
                 if (!dateCol) return { found: false };
@@ -746,8 +748,37 @@
                     
                     let statusCol = findColumnName(activeConfig.columns.paymentStatus, QUOTA_LABELS[quotaKey].id, headers);
                     if (!statusCol) statusCol = findColumnName(activeConfig.columns.paymentStatus, '', headers);
-                    let unpaid = statusCol ? cohortSales.filter(row => isObsUnpaid(row[statusCol])).length : 0;
-                    return { totalSales, unpaid, rangeStr };
+                    
+                    let unpaid = 0;
+                    let upcoming = 0; // New counter
+
+                    if (statusCol) {
+                        cohortSales.forEach(row => {
+                            // 1. Si PAGÓ, NO cuenta como mora
+                            if (!isObsUnpaid(row[statusCol])) return;
+
+                            // 2. Si NO ha pagado, verificamos FECHA
+                            const saleDate = parseDate(row[dateCol]);
+                            if (!saleDate) return;
+
+                            const dueDate = new Date(saleDate);
+                            dueDate.setDate(saleDate.getDate() + 14); // +14 días
+                            
+                            const today = new Date();
+                            today.setHours(0,0,0,0);
+                            dueDate.setHours(0,0,0,0);
+
+                            // SOLO es mora si la fecha vencimiento YA PASÓ (< today)
+                            // Si vence hoy o en el futuro, NO es mora
+                            if (dueDate < today) {
+                                unpaid++;
+                            } else {
+                                upcoming++; // Es deuda pero aún no vence
+                            }
+                        });
+                    }
+                    
+                    return { totalSales, unpaid, upcoming, rangeStr };
                 };
                 const fpd3 = calculateFPD('fpd3');
                 const fpd7 = calculateFPD('fpd7');
@@ -815,6 +846,11 @@
                                     <div className="flex justify-between"><span className="opacity-80">Ventas:</span><span className="font-bold">{fpdInfo.totalSales}</span></div>
                                     <div className={`flex justify-between p-1 -mx-1 rounded ${isFpdActive ? 'bg-white/40 font-bold' : ''}`}>
                                         <span className="opacity-80">No Han Pagado:</span><span className="font-bold underline">{fpdInfo.unpaid}</span>
+                                    </div>
+                                    {/* New Upcoming section */}
+                                    <div className="flex justify-between p-1 -mx-1 rounded text-amber-700 bg-amber-50/50 mt-0.5">
+                                        <span className="text-[10px] flex items-center gap-1 opacity-90"><Icons.Clock className="w-3 h-3"/> Por Vencer:</span>
+                                        <span className="font-bold">{fpdInfo.upcoming}</span>
                                     </div>
                                     <div className="flex justify-between text-red-800 font-bold mt-1 bg-white/30 p-1 rounded -mx-1">
                                         <span className="text-[10px] flex items-center gap-1"><Icons.Target className="w-3 h-3"/> Meta {targetPercent}%:</span><span>{recoverNeeded}</span>
@@ -1145,6 +1181,7 @@
                                                     <td className="px-4 py-3 text-center"><span className="inline-block px-2 py-1 bg-amber-50 text-amber-700 rounded-md font-medium text-xs">{row.porVencer}</span></td>
                                                     <td className="px-4 py-3 text-center text-slate-400 text-xs">{row.vacio}</td>
                                                     <td className="px-6 py-3 text-right">
+                                                        {/* BOTÓN CLICKABLE PARA DRILL-DOWN */}
                                                         <button 
                                                             onClick={() => setDetailSeller(row.name)}
                                                             className={`px-3 py-1 rounded-full text-xs font-bold border transition-transform hover:scale-105 active:scale-95 ${parseFloat(row.index) > 20 ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200' : parseFloat(row.index) > 10 ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200'}`}
