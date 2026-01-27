@@ -76,12 +76,14 @@
             Download: (p) => <IconBase {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></IconBase>,
             Edit2: (p) => <IconBase {...p}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></IconBase>,
             ArrowLeft: (p) => <IconBase {...p}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></IconBase>,
-            Clock: (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>
+            Clock: (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>,
+            // Nuevo icono de tienda
+            Store: (p) => <IconBase {...p}><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/></IconBase>
         };
 
         // --- CONFIGURACIÓN ---
         const API_URL = 'https://script.google.com/macros/s/AKfycbz770i0j3vK5-9M2Z2EheDh9GX2x2j2KbjfFm_yNadBg5db3tEc5so58KWeIX5SwTmAZw/exec';
-        const APP_VERSION = "v3.14.0 (FPD3 + Por Vencer)";
+        const APP_VERSION = "v3.15.0 (Filtro Tienda)";
 
         const QUOTA_LABELS = {
             q1: { id: 'primera', label: 'Primera Cuota', weeksAgo: 3 },
@@ -106,7 +108,8 @@
                     paymentStatus: ['pagos'], 
                     comments: ['comentarios', 'observaciones', 'gestion'],
                     id: ['cedula', 'documento', 'cc', 'nit', 'id'],
-                    email: ['email', 'correo', 'mail']
+                    email: ['email', 'correo', 'mail'],
+                    store: ['tienda', 'almacen', 'sucursal', 'sede', 'punto'] // Columna TIENDA
                 }
             },
             payjoy: {
@@ -123,7 +126,8 @@
                     paymentStatus: ['pagos'], 
                     comments: ['comentarios', 'notas', 'gestion'],
                     id: ['cedula', 'documento', 'cc', 'nit', 'id'],
-                    email: ['email', 'correo', 'mail']
+                    email: ['email', 'correo', 'mail'],
+                    store: ['tienda', 'almacen', 'sucursal', 'sede', 'punto'] // Columna TIENDA
                 }
             }
         };
@@ -213,6 +217,7 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [selectedSeller, setSelectedSeller] = useState('');
             const [selectedDevice, setSelectedDevice] = useState('');
+            const [selectedStore, setSelectedStore] = useState(''); // Nuevo Estado: Tienda
             const [showOnlyAlerts, setShowOnlyAlerts] = useState(false);
             
             // Filtros interactivos
@@ -359,6 +364,7 @@
                 setError(null);
                 setSelectedSeller('');
                 setSelectedDevice('');
+                setSelectedStore(''); // Resetear tienda al recargar
                 setFpdQuotaFilter(null);
                 setBreakdownFilter(null);
                 setShowOnlyAlerts(false);
@@ -401,21 +407,26 @@
             }, [fetchData, isAuthenticated]);
 
             // --- MEMOS DE DATOS ---
-            const { sellers, sellerColumn, devices, deviceColumn, phoneColumn, clientColumn } = useMemo(() => {
+            const { sellers, sellerColumn, devices, deviceColumn, phoneColumn, clientColumn, stores, storeColumn } = useMemo(() => {
                 const sCol = findConfigColumn(activeConfig.columns.seller, headers);
                 const dCol = findConfigColumn(activeConfig.columns.device, headers);
                 const pCol = findConfigColumn(activeConfig.columns.phone, headers);
                 const cCol = findConfigColumn(activeConfig.columns.client, headers); 
+                const stCol = findConfigColumn(activeConfig.columns.store, headers); // Columna Tienda
 
                 const uniqueSellers = new Set();
                 const uniqueDevices = new Set();
+                const uniqueStores = new Set(); // Set para Tiendas
+
                 data.forEach(row => {
                     if (sCol && row[sCol]) uniqueSellers.add(String(row[sCol]).trim());
                     if (dCol && row[dCol]) uniqueDevices.add(String(row[dCol]).trim());
+                    if (stCol && row[stCol]) uniqueStores.add(String(row[stCol]).trim()); // Agregar tienda
                 });
                 return { 
                     sellers: Array.from(uniqueSellers).sort(), sellerColumn: sCol,
                     devices: Array.from(uniqueDevices).sort(), deviceColumn: dCol,
+                    stores: Array.from(uniqueStores).sort(), storeColumn: stCol, // Retornar tiendas
                     phoneColumn: pCol, clientColumn: cCol
                 };
             }, [data, headers, activeConfig, findConfigColumn]);
@@ -454,7 +465,6 @@
                     
                     const status = getStatus(statusCol ? row[statusCol] : '');
 
-                    // --- CÁLCULO FECHA VENCIMIENTO ---
                     const dueDate = new Date(d);
                     dueDate.setDate(d.getDate() + 14);
                     
@@ -463,26 +473,22 @@
                     const dueDateCheck = new Date(dueDate);
                     dueDateCheck.setHours(0,0,0,0);
 
-                    // --- CLASIFICACIÓN ---
                     if (status === 'clean') {
                         report[sellerName].pagas++;
                     } else if (status === 'managed') {
                         report[sellerName].gestion++;
                     } else {
-                        // Es 'unpaid' o 'empty'
                         if (dueDateCheck >= today) {
                             report[sellerName].porVencer++;
                         } else if (status === 'unpaid') {
                             report[sellerName].noCancelo++;
                         } else {
-                            report[sellerName].vacio++; // empty + vencido
+                            report[sellerName].vacio++; 
                         }
                     }
                 });
 
                 return Object.values(report).map(r => {
-                    // ÍNDICE DE MORA REAL = (No Canceló + Gestión) / Total
-                    // Excluimos "Por Vencer" porque están a tiempo
                     const numerator = r.noCancelo + r.gestion;
                     const index = r.total > 0 ? (numerator / r.total) * 100 : 0;
                     return { ...r, index: index.toFixed(1) };
@@ -524,7 +530,6 @@
                     if (!statusCol) statusCol = findColumnName(activeConfig.columns.paymentStatus, '', headers);
                     let status = getStatus(statusCol ? row[statusCol] : '');
 
-                    // --- CÁLCULO FECHA VENCIMIENTO ---
                     const dueDate = new Date(d);
                     dueDate.setDate(d.getDate() + 14);
                     const dueDateStr = dueDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -692,6 +697,8 @@
                 let result = data;
                 if (selectedSeller && sellerColumn) result = result.filter(row => String(row[sellerColumn]).trim() === selectedSeller);
                 if (selectedDevice && deviceColumn) result = result.filter(row => String(row[deviceColumn]).trim() === selectedDevice);
+                if (selectedStore && storeColumn) result = result.filter(row => String(row[storeColumn]).trim() === selectedStore); // Filtro Tienda
+                
                 if (searchTerm) result = result.filter(row => headers.some(header => String(row[header]).toLowerCase().includes(searchTerm.toLowerCase())));
                 if (showOnlyAlerts) result = result.filter(row => getRowAlertStatus(row, headers));
 
@@ -713,15 +720,16 @@
                     }
                 }
                 return result;
-            }, [data, headers, searchTerm, showOnlyAlerts, fpdQuotaFilter, breakdownFilter, selectedSeller, sellerColumn, selectedDevice, deviceColumn, activeConfig, findColumnName, findConfigColumn, portfolio]);
+            }, [data, headers, searchTerm, showOnlyAlerts, fpdQuotaFilter, breakdownFilter, selectedSeller, sellerColumn, selectedDevice, deviceColumn, selectedStore, storeColumn, activeConfig, findColumnName, findConfigColumn, portfolio]);
 
             // --- ESTADISTICAS ---
             const dataForStats = useMemo(() => {
                 let result = data;
                 if (selectedSeller && sellerColumn) result = result.filter(row => String(row[sellerColumn]).trim() === selectedSeller);
                 if (selectedDevice && deviceColumn) result = result.filter(row => String(row[deviceColumn]).trim() === selectedDevice);
+                if (selectedStore && storeColumn) result = result.filter(row => String(row[storeColumn]).trim() === selectedStore); // Filtro Tienda
                 return result;
-            }, [data, selectedSeller, sellerColumn, selectedDevice, deviceColumn]);
+            }, [data, selectedSeller, sellerColumn, selectedDevice, deviceColumn, selectedStore, storeColumn]);
 
             const alertStats = useMemo(() => {
                 let stats = { total: 0 };
@@ -750,30 +758,26 @@
                     if (!statusCol) statusCol = findColumnName(activeConfig.columns.paymentStatus, '', headers);
                     
                     let unpaid = 0;
-                    let upcoming = 0; // New counter
+                    let upcoming = 0; 
 
                     if (statusCol) {
                         cohortSales.forEach(row => {
-                            // 1. Si PAGÓ, NO cuenta como mora
                             if (!isObsUnpaid(row[statusCol])) return;
 
-                            // 2. Si NO ha pagado, verificamos FECHA
                             const saleDate = parseDate(row[dateCol]);
                             if (!saleDate) return;
 
                             const dueDate = new Date(saleDate);
-                            dueDate.setDate(saleDate.getDate() + 14); // +14 días
+                            dueDate.setDate(saleDate.getDate() + 14); 
                             
                             const today = new Date();
                             today.setHours(0,0,0,0);
                             dueDate.setHours(0,0,0,0);
 
-                            // SOLO es mora si la fecha vencimiento YA PASÓ (< today)
-                            // Si vence hoy o en el futuro, NO es mora
                             if (dueDate < today) {
                                 unpaid++;
                             } else {
-                                upcoming++; // Es deuda pero aún no vence
+                                upcoming++; 
                             }
                         });
                     }
@@ -912,13 +916,23 @@
 
                     {error && <div className="bg-red-50 p-4 rounded-lg border border-red-200 flex gap-3 text-red-700 items-start"><Icons.AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0"/><div><h3 className="font-bold text-sm">Error de Conexión</h3><p className="text-xs mt-1">{String(error)}</p></div></div>}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Vendedor</label>
                             <div className="relative">
                                 <select className="w-full p-2 bg-slate-50 border border-slate-100 rounded text-sm text-slate-700 outline-none focus:border-indigo-500" value={selectedSeller} onChange={e => setSelectedSeller(e.target.value)}>
                                     <option value="">Todos</option>
                                     {sellers.map((s,i) => <option key={i} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        {/* NUEVO FILTRO TIENDA */}
+                        <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Tienda</label>
+                            <div className="relative">
+                                <select className="w-full p-2 bg-slate-50 border border-slate-100 rounded text-sm text-slate-700 outline-none focus:border-indigo-500" value={selectedStore} onChange={e => setSelectedStore(e.target.value)}>
+                                    <option value="">Todas</option>
+                                    {stores.map((s,i) => <option key={i} value={s}>{s}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -944,6 +958,7 @@
                         </div>
                     </div>
 
+                    {/* ... Rest of the component (Alerts, StatCards, Table, Modals) ... */}
                     {alertStats.total > 0 && (
                         <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                              <div className="flex gap-4 items-center">
@@ -1006,14 +1021,12 @@
                                                 const style = getColumnStyles(h);
                                                 let isAlert = false;
                                                 
-                                                // 1. CHEQUEO DE ALERTA (Usa columna PAGOS)
                                                 if (style) {
                                                     let qName = '';
                                                     if (h.toLowerCase().includes('primera')) qName='primera';
                                                     if(qName && activeConfig.quotas.some(qId => QUOTA_LABELS[qId].id === qName) && checkSpecificQuotaAlert(row, headers, 'fpd3')) isAlert = true; 
                                                 }
 
-                                                // 2. COLUMNA DE TELEFONO
                                                 const isPhoneCol = activeConfig.columns.phone && activeConfig.columns.phone.some(p => h.toLowerCase().includes(p));
                                                 if (isPhoneCol) {
                                                     const clientVal = clientColumn ? row[clientColumn] : '';
@@ -1034,7 +1047,6 @@
                                                     }
                                                 }
                                                 
-                                                // 3. COLUMNA EDITABLE (COMENTARIOS) - Solo muestra Lápiz
                                                 const isCommentsCol = activeConfig.columns.comments && (
                                                     (typeof activeConfig.columns.comments === 'string' && h.toLowerCase().includes(activeConfig.columns.comments)) ||
                                                     (Array.isArray(activeConfig.columns.comments) && activeConfig.columns.comments.some(n => h.toLowerCase().includes(n)))
@@ -1056,7 +1068,6 @@
                                                      )
                                                 }
 
-                                                // 4. CELDA NORMAL
                                                 return (
                                                     <td key={j} className={`px-4 py-3 whitespace-nowrap text-xs ${style?.bgColor} ${isAlert ? 'bg-rose-50 text-rose-700 font-bold border-l-2 border-rose-500' : ''}`}>
                                                         {isAlert && <Icons.AlertTriangle className="w-3 h-3 inline mr-1.5"/>}
